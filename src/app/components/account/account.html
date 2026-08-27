@@ -174,7 +174,7 @@
           <div class="bb-card bb-panel">
             <h2>ID verification</h2>
 
-            @if (verification(); as v) {
+            @if (latest; as v) {
               <div class="bb-kyc-status">
                 <p-tag [value]="humanise(v.status)" [severity]="toneFor(v.status)" />
                 <span>
@@ -183,23 +183,40 @@
                 </span>
               </div>
 
-              @if (v.status === 'PENDING') {
-                <p-message
-                  severity="info"
-                  text="Submitted. A reviewer usually gets to this within a day."
-                  styleClass="w-full mb-3"
-                />
+              @switch (v.status) {
+                @case ('PENDING') {
+                  <p-message
+                    severity="info"
+                    text="Submitted. A reviewer usually gets to this within a day."
+                    styleClass="w-full mb-3"
+                  />
+                }
+                @case ('APPROVED') {
+                  <p-message severity="success" text="Verified. You can place orders." styleClass="w-full mb-3" />
+                }
+                @case ('REJECTED') {
+                  <p-message
+                    severity="error"
+                    [text]="v.rejectionReason ? 'Rejected: ' + v.rejectionReason : 'Rejected. Submit a clearer document.'"
+                    styleClass="w-full mb-3"
+                  />
+                }
+                @case ('EXPIRED') {
+                  <p-message
+                    severity="warn"
+                    text="This verification has expired. Submit a current document to keep ordering."
+                    styleClass="w-full mb-3"
+                  />
+                }
               }
-              @if (v.status === 'APPROVED') {
-                <p-message severity="success" text="Verified. You can place orders." styleClass="w-full mb-3" />
-              }
-              @if (v.status === 'REJECTED' && v.rejectionReason) {
-                <p-message
-                  severity="error"
-                  [text]="'Rejected: ' + v.rejectionReason"
-                  styleClass="w-full mb-3"
-                />
-              }
+            } @else if (kyc()?.ageVerified) {
+              <!-- Verified on the profile with nothing on file: an account
+                   verified before this flow existed, or by support. -->
+              <p-message
+                severity="success"
+                text="Your account is verified and can place orders."
+                styleClass="w-full mb-3"
+              />
             } @else {
               <p-message
                 severity="warn"

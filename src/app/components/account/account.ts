@@ -31,6 +31,15 @@ import {
   OrderEligibility,
 } from '../../shared/models/customer.model';
 
+/** What `age-verifications/my-status` returns. */
+interface KycStatus {
+  ageVerified: boolean;
+  ageVerifiedAt: string | null;
+  /** The API decides this: true when nothing is on file, or the last try failed. */
+  canSubmit: boolean;
+  latestVerification: AgeVerification | null;
+}
+
 const DOCUMENT_TYPES = [
   { label: 'Aadhaar', value: 'AADHAAR' },
   { label: 'Passport', value: 'PASSPORT' },
@@ -87,7 +96,7 @@ export class Account {
 
   readonly profile = signal<CustomerProfile | null>(null);
   readonly addresses = signal<CustomerAddress[]>([]);
-  readonly verification = signal<AgeVerification | null>(null);
+  readonly kyc = signal<KycStatus | null>(null);
   readonly eligibility = signal<OrderEligibility | null>(null);
 
   readonly savingProfile = signal(false);
@@ -189,8 +198,8 @@ export class Account {
     });
 
     this.shop.ageVerificationStatus().subscribe({
-      next: (res) => this.verification.set(res.data ?? null),
-      error: () => this.verification.set(null),
+      next: (res) => this.kyc.set(res.data ?? null),
+      error: () => this.kyc.set(null),
     });
 
     this.shop.eligibility().subscribe({
@@ -356,9 +365,18 @@ export class Account {
 
   /* --------------------------- age verification --------------------------- */
 
+  /**
+   * The server decides whether another submission is allowed — nothing on file,
+   * or the last one was rejected or has expired. Re-deriving that from the
+   * status here would be a second copy of the rule, free to drift.
+   */
   get canSubmitKyc(): boolean {
-    const status = this.verification()?.status;
-    return status !== 'PENDING' && status !== 'APPROVED';
+    return this.kyc()?.canSubmit ?? true;
+  }
+
+  /** The most recent submission, or null if none has ever been made. */
+  get latest(): AgeVerification | null {
+    return this.kyc()?.latestVerification ?? null;
   }
 
   pickFile(which: 'front' | 'back', event: Event): void {
@@ -394,9 +412,8 @@ export class Account {
 
     this.submittingKyc.set(true);
     this.shop.submitAgeVerification(form).subscribe({
-      next: (res) => {
+      next: () => {
         this.submittingKyc.set(false);
-        this.verification.set(res.data);
         this.documentFront = null;
         this.documentBack = null;
         this.kycForm.patchValue({ documentNumber: '' });
@@ -406,6 +423,7 @@ export class Account {
           detail: 'We will let you know once it has been checked.',
           life: 5000,
         });
+        this.loadRest();
       },
       error: (err) => {
         this.submittingKyc.set(false);

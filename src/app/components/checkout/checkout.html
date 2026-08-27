@@ -115,23 +115,46 @@
           </div>
         }
 
-        @if (compliance(); as rule) {
+        <!-- The rule the server actually applied, not a client guess at it. -->
+        @if (compliance(); as report) {
           <div class="bb-card bb-compliance">
-            <h2><i class="pi pi-verified"></i> Regional rules</h2>
+            <h2><i class="pi pi-verified"></i> Rules for this address</h2>
             <dl>
-              @if (rule.regionCode) {
-                <div><dt>Region</dt><dd>{{ rule.regionCode }}</dd></div>
-              }
-              @if (rule.minimumAge) {
-                <div><dt>Minimum age</dt><dd>{{ rule.minimumAge }} years</dd></div>
-              }
-              @if (rule.saleWindow) {
-                <div>
-                  <dt>Sale hours</dt>
-                  <dd>{{ rule.saleWindow.start }} – {{ rule.saleWindow.end }}</dd>
-                </div>
+              <div>
+                <dt>Region</dt>
+                <dd>{{ report.regionName || report.regionCode }}</dd>
+              </div>
+
+              @if (report.appliedRule; as rule) {
+                @if (rule.minimumAge) {
+                  <div><dt>Minimum age</dt><dd>{{ rule.minimumAge }} years</dd></div>
+                }
+                @if (rule.saleWindow?.from && rule.saleWindow?.to) {
+                  <div>
+                    <dt>Sale hours</dt>
+                    <dd>{{ rule.saleWindow.from }} – {{ rule.saleWindow.to }}</dd>
+                  </div>
+                }
+                @if (rule.maxQuantityPerOrder) {
+                  <div><dt>Units per order</dt><dd>up to {{ rule.maxQuantityPerOrder }}</dd></div>
+                }
+                @if (rule.maxOrderAmount) {
+                  <div>
+                    <dt>Order value cap</dt>
+                    <dd class="bb-money">{{ rule.maxOrderAmount | money }}</dd>
+                  </div>
+                }
+                @if (rule.dryDay) {
+                  <div class="is-blocked"><dt>Today</dt><dd>Dry day — no sales</dd></div>
+                }
               }
             </dl>
+
+            @if (compliance()?.appliedRule?.isFallback) {
+              <p class="bb-fallback-note">
+                No specific rule is configured for this region, so the platform default applies.
+              </p>
+            }
           </div>
         }
 

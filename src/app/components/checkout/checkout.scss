@@ -301,3 +301,14 @@ dl {
     grid-template-columns: 1fr;
   }
 }
+
+dl > div.is-blocked dd {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.bb-fallback-note {
+  margin: 0.6rem 0 0;
+  font-size: 0.76rem;
+  color: var(--bb-muted);
+}
