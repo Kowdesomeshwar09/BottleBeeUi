@@ -14,6 +14,7 @@ import { ShopFacadeService } from '../../facade/shop.facade.service';
 import { AuthenticateService } from '../../services/authenticate.service';
 import { CommonService } from '../../services/common.service';
 import { StateBlock } from '../../shared/state-block';
+import { AssetUrlPipe } from '../../shared/asset-url.pipe';
 import { MoneyPipe } from '../../shared/money.pipe';
 import { humanise } from '../../shared/status';
 import { Product, ProductVariant } from '../../shared/models/catalog.model';
@@ -41,6 +42,7 @@ interface PublicReview {
     TagModule,
     StateBlock,
     MoneyPipe,
+    AssetUrlPipe,
   ],
   templateUrl: './product-detail.html',
   styleUrl: './product-detail.scss',

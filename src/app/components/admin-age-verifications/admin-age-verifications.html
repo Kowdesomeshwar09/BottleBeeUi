@@ -144,28 +144,28 @@
     <div class="bb-docs">
       @if (v.documentFrontUrl) {
         <figure>
-          <img [src]="v.documentFrontUrl" alt="Front of the submitted document" />
+          <img [src]="v.documentFrontUrl | assetUrl" alt="Front of the submitted document" />
           <figcaption>
             Front ·
-            <a [href]="v.documentFrontUrl" target="_blank" rel="noopener">open full size</a>
+            <a [href]="v.documentFrontUrl | assetUrl" target="_blank" rel="noopener">open full size</a>
           </figcaption>
         </figure>
       }
       @if (v.documentBackUrl) {
         <figure>
-          <img [src]="v.documentBackUrl" alt="Back of the submitted document" />
+          <img [src]="v.documentBackUrl | assetUrl" alt="Back of the submitted document" />
           <figcaption>
             Back ·
-            <a [href]="v.documentBackUrl" target="_blank" rel="noopener">open full size</a>
+            <a [href]="v.documentBackUrl | assetUrl" target="_blank" rel="noopener">open full size</a>
           </figcaption>
         </figure>
       }
       @if (v.selfieUrl) {
         <figure>
-          <img [src]="v.selfieUrl" alt="Submitted selfie" />
+          <img [src]="v.selfieUrl | assetUrl" alt="Submitted selfie" />
           <figcaption>
             Selfie ·
-            <a [href]="v.selfieUrl" target="_blank" rel="noopener">open full size</a>
+            <a [href]="v.selfieUrl | assetUrl" target="_blank" rel="noopener">open full size</a>
           </figcaption>
         </figure>
       }

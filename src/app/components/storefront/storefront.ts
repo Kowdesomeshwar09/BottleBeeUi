@@ -19,6 +19,7 @@ import { ShopFacadeService } from '../../facade/shop.facade.service';
 import { AuthenticateService } from '../../services/authenticate.service';
 import { CommonService } from '../../services/common.service';
 import { StateBlock } from '../../shared/state-block';
+import { AssetUrlPipe } from '../../shared/asset-url.pipe';
 import { MoneyPipe } from '../../shared/money.pipe';
 import { humanise } from '../../shared/status';
 import { BrandRef, CategoryRef, Product, ProductVariant } from '../../shared/models/catalog.model';
@@ -55,6 +56,7 @@ const SORTS: SortOption[] = [
     TagModule,
     StateBlock,
     MoneyPipe,
+    AssetUrlPipe,
   ],
   templateUrl: './storefront.html',
   styleUrl: './storefront.scss',

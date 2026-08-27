@@ -155,7 +155,7 @@
             <article class="bb-card bb-product">
               <a [routerLink]="['/shop/product', product.slug]" class="bb-product-media">
                 @if (imageFor(product); as image) {
-                  <img [src]="image" [alt]="product.name" loading="lazy" />
+                  <img [src]="image | assetUrl" [alt]="product.name" loading="lazy" />
                 } @else {
                   <span class="bb-product-placeholder" aria-hidden="true">🍾</span>
                 }

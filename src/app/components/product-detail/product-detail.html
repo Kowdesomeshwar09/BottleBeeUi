@@ -12,7 +12,7 @@
       <section class="bb-gallery">
         <div class="bb-gallery-main bb-card">
           @if (activeImage(); as image) {
-            <img [src]="image" [alt]="p.name" />
+            <img [src]="image | assetUrl" [alt]="p.name" />
           } @else {
             <span class="bb-gallery-placeholder" aria-hidden="true">🍾</span>
           }
@@ -28,7 +28,7 @@
                 (click)="activeImage.set(image.imageUrl)"
                 [attr.aria-label]="image.altText || 'View image'"
               >
-                <img [src]="image.imageUrl" [alt]="image.altText || p.name" />
+                <img [src]="image.imageUrl | assetUrl" [alt]="image.altText || p.name" />
               </button>
             }
           </div>

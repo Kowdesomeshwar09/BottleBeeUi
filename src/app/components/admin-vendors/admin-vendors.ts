@@ -17,6 +17,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { AdminFacadeService } from '../../facade/admin.facade.service';
 import { CommonService } from '../../services/common.service';
 import { StateBlock } from '../../shared/state-block';
+import { AssetUrlPipe } from '../../shared/asset-url.pipe';
 import { MoneyPipe } from '../../shared/money.pipe';
 import { humanise, toneFor } from '../../shared/status';
 
@@ -61,6 +62,7 @@ const LICENCE_FILTERS = [
     TooltipModule,
     StateBlock,
     MoneyPipe,
+    AssetUrlPipe,
   ],
   templateUrl: './admin-vendors.html',
   styleUrls: ['./admin-vendors.scss', '../../shared/table-page.scss'],

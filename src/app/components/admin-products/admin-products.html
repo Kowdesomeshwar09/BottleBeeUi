@@ -196,7 +196,7 @@
       <h3>Images</h3>
       <div class="bb-image-strip">
         @for (image of p.images; track image.id) {
-          <img [src]="image.imageUrl" [alt]="image.altText || p.name" />
+          <img [src]="image.imageUrl | assetUrl" [alt]="image.altText || p.name" />
         }
       </div>
     }

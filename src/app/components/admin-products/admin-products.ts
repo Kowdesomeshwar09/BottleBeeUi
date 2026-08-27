@@ -19,6 +19,7 @@ import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { AdminFacadeService } from '../../facade/admin.facade.service';
 import { CommonService } from '../../services/common.service';
 import { StateBlock } from '../../shared/state-block';
+import { AssetUrlPipe } from '../../shared/asset-url.pipe';
 import { MoneyPipe } from '../../shared/money.pipe';
 import { humanise, toneFor } from '../../shared/status';
 import { Product } from '../../shared/models/catalog.model';
@@ -60,6 +61,7 @@ const FILTERS = [
     TextareaModule,
     StateBlock,
     MoneyPipe,
+    AssetUrlPipe,
   ],
   templateUrl: './admin-products.html',
   styleUrls: ['./admin-products.scss', '../../shared/table-page.scss'],

@@ -202,7 +202,7 @@
                   </td>
                   <td>
                     @if (licence.documentUrl) {
-                      <a [href]="licence.documentUrl" target="_blank" rel="noopener" class="bb-link-btn">
+                      <a [href]="licence.documentUrl | assetUrl" target="_blank" rel="noopener" class="bb-link-btn">
                         View
                       </a>
                     } @else { — }
@@ -385,7 +385,7 @@
     </dl>
 
     @if (l.documentUrl) {
-      <a [href]="l.documentUrl" target="_blank" rel="noopener" class="bb-doc-link">
+      <a [href]="l.documentUrl | assetUrl" target="_blank" rel="noopener" class="bb-doc-link">
         <i class="pi pi-external-link"></i> Open the scanned document
       </a>
     }

@@ -13,6 +13,7 @@ import { TextareaModule } from 'primeng/textarea';
 
 import { AdminFacadeService } from '../../facade/admin.facade.service';
 import { CommonService } from '../../services/common.service';
+import { AssetUrlPipe } from '../../shared/asset-url.pipe';
 import { StateBlock } from '../../shared/state-block';
 import { humanise, toneFor } from '../../shared/status';
 
@@ -47,6 +48,7 @@ const FILTERS = [
     TagModule,
     TextareaModule,
     StateBlock,
+    AssetUrlPipe,
   ],
   templateUrl: './admin-age-verifications.html',
   styleUrls: ['./admin-age-verifications.scss', '../../shared/table-page.scss'],
