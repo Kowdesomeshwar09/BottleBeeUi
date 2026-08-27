@@ -1,0 +1,71 @@
+<div class="bb-page">
+  <header class="bb-orders-head">
+    <div>
+      <h1 class="bb-page-title">Your orders</h1>
+      <p class="bb-page-subtitle">Everything you have ordered, newest first.</p>
+    </div>
+
+    <p-select
+      [(ngModel)]="status"
+      [options]="statusFilters"
+      optionLabel="label"
+      optionValue="value"
+      (onChange)="onFilter()"
+      styleClass="bb-status-filter"
+      ariaLabel="Filter by status"
+    />
+  </header>
+
+  @if (loading() || error()) {
+    <bb-state-block [loading]="loading()" [error]="error()" loadingText="Fetching your orders…" (retry)="load()" />
+  } @else if (!orders().length) {
+    <bb-state-block
+      [empty]="true"
+      emptyIcon="pi-receipt"
+      emptyTitle="No orders yet"
+      [emptyText]="status ? 'Nothing matches that filter.' : 'When you place an order it will show up here.'"
+    >
+      <a routerLink="/shop"><p-button label="Start shopping" icon="pi pi-shopping-bag" /></a>
+    </bb-state-block>
+  } @else {
+    <div class="bb-order-rows">
+      @for (order of orders(); track order.id) {
+        <a class="bb-order-row bb-card" [routerLink]="['/orders', order.id]">
+          <div class="bb-order-main">
+            <div class="bb-order-top">
+              <strong>{{ order.orderNumber }}</strong>
+              <p-tag [value]="humanise(order.status)" [severity]="toneFor(order.status, 'order')" />
+              @if (order.paymentStatus !== 'PAID' && order.status !== 'CANCELLED') {
+                <p-tag
+                  [value]="humanise(order.paymentStatus)"
+                  [severity]="toneFor(order.paymentStatus, 'payment')"
+                />
+              }
+            </div>
+
+            <span class="bb-order-items">{{ itemSummary(order) }}</span>
+
+            <span class="bb-order-meta">
+              @if (order.vendor) { {{ order.vendor.businessName }} · }
+              {{ order.createdAt | date: 'd MMM y, h:mm a' }}
+            </span>
+          </div>
+
+          <div class="bb-order-right">
+            <strong class="bb-money">{{ order.grandTotal | money }}</strong>
+            <span class="bb-order-link">View <i class="pi pi-angle-right"></i></span>
+          </div>
+        </a>
+      }
+    </div>
+
+    <p-paginator
+      [first]="(page() - 1) * limit()"
+      [rows]="limit()"
+      [totalRecords]="total()"
+      [rowsPerPageOptions]="[10, 25, 50]"
+      (onPageChange)="onPage($event)"
+      styleClass="mt-3"
+    />
+  }
+</div>

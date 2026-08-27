@@ -1,0 +1,299 @@
+<div class="bb-page">
+  @if (loading() || error()) {
+    <bb-state-block [loading]="loading()" [error]="error()" loadingText="Fetching your order…" (retry)="load()" />
+  } @else if (order(); as o) {
+    <nav class="bb-crumbs" aria-label="Breadcrumb">
+      <a routerLink="/orders">Your orders</a>
+      <span>›</span>
+      <span class="bb-crumb-current">{{ o.orderNumber }}</span>
+    </nav>
+
+    <header class="bb-track-head">
+      <div>
+        <h1 class="bb-page-title">{{ o.orderNumber }}</h1>
+        <p class="bb-page-subtitle">
+          Placed {{ o.createdAt | date: 'd MMM y, h:mm a' }}
+          @if (o.vendor) { · {{ o.vendor.businessName }} }
+        </p>
+      </div>
+
+      <div class="bb-track-tags">
+        <p-tag [value]="humanise(o.status)" [severity]="toneFor(o.status, 'order')" />
+        <p-tag [value]="'Payment: ' + humanise(o.paymentStatus)" [severity]="toneFor(o.paymentStatus, 'payment')" />
+      </div>
+    </header>
+
+    @if (statusHelp[o.status]; as help) {
+      <p-message
+        [severity]="o.status === 'CANCELLED' || o.status === 'PAYMENT_FAILED' ? 'warn' : 'info'"
+        [text]="help"
+        styleClass="w-full mb-3"
+      />
+    }
+
+    @if (o.cancellationReason) {
+      <p-message severity="warn" [text]="'Reason given: ' + o.cancellationReason" styleClass="w-full mb-3" />
+    }
+
+    <div class="bb-track">
+      <div class="bb-track-main">
+        <!-- Progress -->
+        <section class="bb-card bb-panel">
+          <h2>Progress</h2>
+
+          @if (history().length) {
+            <p-timeline [value]="history()" align="left" styleClass="bb-timeline">
+              <ng-template #content let-event>
+                <div class="bb-event">
+                  <strong>{{ humanise(event.toStatus) }}</strong>
+                  <span>{{ event.changedAt | date: 'd MMM, h:mm a' }}</span>
+                  @if (event.note) { <em>{{ event.note }}</em> }
+                  @if (event.changedBy) { <small>by {{ event.changedBy }}</small> }
+                </div>
+              </ng-template>
+            </p-timeline>
+          } @else {
+            <p class="bb-panel-empty">No status changes recorded yet.</p>
+          }
+        </section>
+
+        <!-- Items -->
+        <section class="bb-card bb-panel">
+          <h2>Items</h2>
+
+          <ul class="bb-item-list">
+            @for (item of o.items; track item.id) {
+              <li>
+                <div>
+                  <strong>{{ item.productName }}</strong>
+                  <span>
+                    {{ item.variantLabel || item.sku }} · {{ item.quantity }} ×
+                    {{ item.unitPrice | money }}
+                  </span>
+                </div>
+                <div class="bb-item-money">
+                  <strong class="bb-money">{{ item.lineTotal | money }}</strong>
+                  @if (item.discountAmount > 0) {
+                    <span class="bb-saved">−{{ item.discountAmount | money }}</span>
+                  }
+                </div>
+              </li>
+            }
+          </ul>
+
+          <p-divider />
+
+          <dl>
+            <div><dt>Subtotal</dt><dd class="bb-money">{{ o.subtotal | money }}</dd></div>
+            @if (o.discountTotal > 0) {
+              <div class="is-saving"><dt>Discount</dt><dd class="bb-money">−{{ o.discountTotal | money }}</dd></div>
+            }
+            <div><dt>Tax</dt><dd class="bb-money">{{ o.taxTotal | money }}</dd></div>
+            <div>
+              <dt>Delivery</dt>
+              <dd class="bb-money">
+                @if (o.deliveryFee === 0) { Free } @else { {{ o.deliveryFee | money }} }
+              </dd>
+            </div>
+            <div class="is-total"><dt>Total</dt><dd class="bb-money">{{ o.grandTotal | money }}</dd></div>
+          </dl>
+        </section>
+
+        @if (refunds().length) {
+          <section class="bb-card bb-panel">
+            <h2>Refunds</h2>
+            <ul class="bb-plain-list">
+              @for (refund of refunds(); track refund.id) {
+                <li>
+                  <div>
+                    <strong class="bb-money">{{ refund.amount | money }}</strong>
+                    <span>{{ refund.reason }}</span>
+                  </div>
+                  <p-tag [value]="humanise(refund.status)" [severity]="toneFor(refund.status)" />
+                </li>
+              }
+            </ul>
+          </section>
+        }
+      </div>
+
+      <aside class="bb-track-side">
+        @if (awaitingPayment()) {
+          <div class="bb-card bb-panel bb-pay-panel">
+            <h2>Payment due</h2>
+            <p>
+              We are holding your items. This order is confirmed once payment completes.
+            </p>
+            <strong class="bb-money bb-due">{{ o.grandTotal | money }}</strong>
+            <p-button label="Pay now" icon="pi pi-credit-card" styleClass="w-full" (onClick)="payNow()" />
+          </div>
+        }
+
+        @if (delivery(); as d) {
+          <div class="bb-card bb-panel">
+            <h2>Delivery</h2>
+
+            <dl class="bb-kv">
+              <div><dt>Status</dt><dd><p-tag [value]="humanise(d.status)" [severity]="toneFor(d.status, 'delivery')" /></dd></div>
+              @if (d.partner?.name) {
+                <div><dt>Partner</dt><dd>{{ d.partner.name }}</dd></div>
+              }
+              @if (d.partner?.phone) {
+                <div><dt>Phone</dt><dd><a [href]="'tel:' + d.partner.phone">{{ d.partner.phone }}</a></dd></div>
+              }
+              @if (d.partner?.vehicleNumber) {
+                <div><dt>Vehicle</dt><dd>{{ d.partner.vehicleNumber }}</dd></div>
+              }
+              <div>
+                <dt>ID checked</dt>
+                <dd>{{ d.recipientVerified ? 'Yes' : 'Not yet' }}</dd>
+              </div>
+            </dl>
+
+            @if (!d.recipientVerified && d.status !== 'DELIVERED') {
+              <p class="bb-legal">
+                Keep a valid government photo ID ready. The delivery partner must check it before
+                handing the order over, and will return the order if it cannot be produced.
+              </p>
+            }
+          </div>
+        }
+
+        @if (o.deliveryAddress; as address) {
+          <div class="bb-card bb-panel">
+            <h2>Delivering to</h2>
+            <address>
+              <strong>{{ address.recipientName }}</strong>
+              @if (address.phone) { <span>{{ address.phone }}</span> }
+              <span>{{ address.addressLine1 }}</span>
+              @if (address.addressLine2) { <span>{{ address.addressLine2 }}</span> }
+              <span>{{ address.city }}, {{ address.state }} {{ address.postalCode }}</span>
+              @if (address.deliveryInstructions) { <em>{{ address.deliveryInstructions }}</em> }
+            </address>
+          </div>
+        }
+
+        @if (payments().length) {
+          <div class="bb-card bb-panel">
+            <h2>Payment</h2>
+            <ul class="bb-plain-list">
+              @for (payment of payments(); track payment.id) {
+                <li>
+                  <div>
+                    <strong class="bb-money">{{ payment.amount | money }}</strong>
+                    <span>{{ payment.provider }}</span>
+                    @if (payment.failureReason) { <em>{{ payment.failureReason }}</em> }
+                  </div>
+                  <p-tag [value]="humanise(payment.status)" [severity]="toneFor(payment.status, 'payment')" />
+                </li>
+              }
+            </ul>
+          </div>
+        }
+
+        <div class="bb-track-actions">
+          @if (canCancel()) {
+            <p-button
+              label="Cancel this order"
+              icon="pi pi-times"
+              severity="danger"
+              [outlined]="true"
+              styleClass="w-full"
+              (onClick)="cancelDialog.set(true)"
+            />
+          }
+          @if (canReview()) {
+            <p-button
+              label="Rate this order"
+              icon="pi pi-star"
+              severity="secondary"
+              [outlined]="true"
+              styleClass="w-full"
+              (onClick)="reviewDialog.set(true)"
+            />
+          }
+          <p-button
+            label="Back to your orders"
+            icon="pi pi-arrow-left"
+            severity="secondary"
+            [text]="true"
+            styleClass="w-full"
+            (onClick)="backToOrders()"
+          />
+        </div>
+      </aside>
+    </div>
+  }
+</div>
+
+<!-- Cancel -->
+<p-dialog
+  header="Cancel this order"
+  [visible]="cancelDialog()"
+  (visibleChange)="cancelDialog.set($event)"
+  [modal]="true"
+  [style]="{ width: '28rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  <p class="bb-dialog-lead">
+    Tell us why, so the store knows. Any payment already taken is refunded to the original method.
+  </p>
+
+  <textarea
+    pTextarea
+    rows="3"
+    [(ngModel)]="cancelReason"
+    maxlength="500"
+    placeholder="Changed my mind, ordered by mistake, taking too long…"
+    aria-label="Reason for cancelling"
+    class="w-full"
+  ></textarea>
+
+  <div class="bb-dialog-actions">
+    <p-button label="Keep the order" severity="secondary" [text]="true" (onClick)="cancelDialog.set(false)" />
+    <p-button
+      label="Cancel the order"
+      severity="danger"
+      icon="pi pi-times"
+      [disabled]="cancelReason.trim().length < 3"
+      [loading]="cancelling()"
+      (onClick)="cancel()"
+    />
+  </div>
+</p-dialog>
+
+<!-- Review -->
+<p-dialog
+  header="Rate this order"
+  [visible]="reviewDialog()"
+  (visibleChange)="reviewDialog.set($event)"
+  [modal]="true"
+  [style]="{ width: '28rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  <div class="bb-review-form">
+    <label class="bb-field">
+      <span>How was it?</span>
+      <p-rating [(ngModel)]="reviewRating" [ngModelOptions]="{ standalone: true }" />
+    </label>
+
+    <label class="bb-field">
+      <span>Headline <em>(optional)</em></span>
+      <input pInputText [(ngModel)]="reviewTitle" maxlength="150" class="w-full" />
+    </label>
+
+    <label class="bb-field">
+      <span>Anything else <em>(optional)</em></span>
+      <textarea pTextarea rows="3" [(ngModel)]="reviewComment" class="w-full"></textarea>
+    </label>
+
+    <p class="bb-legal">
+      Reviews are checked by a moderator before they appear.
+    </p>
+  </div>
+
+  <div class="bb-dialog-actions">
+    <p-button label="Not now" severity="secondary" [text]="true" (onClick)="reviewDialog.set(false)" />
+    <p-button label="Submit" icon="pi pi-check" [loading]="submittingReview()" (onClick)="submitReview()" />
+  </div>
+</p-dialog>

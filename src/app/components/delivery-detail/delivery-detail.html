@@ -1,0 +1,288 @@
+<div class="bb-page">
+  @if (loading() || error()) {
+    <bb-state-block [loading]="loading()" [error]="error()" loadingText="Loading this run…" (retry)="load()" />
+  } @else if (run(); as r) {
+    <nav class="bb-crumbs" aria-label="Breadcrumb">
+      <a routerLink="/delivery/my-deliveries">Your runs</a>
+      <span>›</span>
+      <span class="bb-crumb-current">{{ r.order?.orderNumber || 'Run ' + r.id }}</span>
+    </nav>
+
+    <header class="bb-run-head">
+      <div>
+        <h1 class="bb-page-title">{{ r.order?.orderNumber || 'Run ' + r.id }}</h1>
+        <p class="bb-page-subtitle">
+          Assigned {{ r.assignedAt || r.createdAt | date: 'd MMM y, h:mm a' }}
+        </p>
+      </div>
+      <p-tag [value]="humanise(r.status)" [severity]="toneFor(r.status, 'delivery')" />
+    </header>
+
+    @if (r.failureReason) {
+      <p-message severity="error" [text]="'Failed: ' + r.failureReason" styleClass="w-full mb-3" />
+    }
+
+    <!-- The legal gate, stated plainly and before anything else. -->
+    @if (canCheckId()) {
+      <div class="bb-card bb-gate">
+        <h2><i class="pi pi-id-card"></i> Check the recipient's ID first</h2>
+        <p>
+          Alcohol may not be handed to anyone below the legal drinking age of this region, and may
+          not be left unattended. Check a valid government photo ID against the recipient before you
+          hand anything over. If they cannot produce one, mark this run failed and return the order
+          to the store.
+        </p>
+        <p-button
+          label="I have checked their ID"
+          icon="pi pi-check-circle"
+          styleClass="w-full"
+          (onClick)="idDialog.set(true)"
+        />
+      </div>
+    }
+
+    <div class="bb-run-body">
+      <div class="bb-run-main">
+        @if (r.order?.deliveryAddress; as address) {
+          <section class="bb-card bb-panel">
+            <header class="bb-panel-head">
+              <h2>Deliver to</h2>
+              <p-button
+                icon="pi pi-map"
+                label="Open map"
+                severity="secondary"
+                [outlined]="true"
+                size="small"
+                (onClick)="openMap()"
+              />
+            </header>
+
+            <address>
+              <strong>{{ address.recipientName }}</strong>
+              @if (address.phone) {
+                <a [href]="'tel:' + address.phone" class="bb-phone">
+                  <i class="pi pi-phone"></i> {{ address.phone }}
+                </a>
+              }
+              <span>{{ address.addressLine1 }}</span>
+              @if (address.addressLine2) { <span>{{ address.addressLine2 }}</span> }
+              <span>{{ address.city }}, {{ address.state }} {{ address.postalCode }}</span>
+              @if (address.deliveryInstructions) {
+                <em><i class="pi pi-info-circle"></i> {{ address.deliveryInstructions }}</em>
+              }
+            </address>
+          </section>
+        }
+
+        <section class="bb-card bb-panel">
+          <h2>Order</h2>
+          <dl class="bb-kv">
+            <div><dt>Number</dt><dd>{{ r.order?.orderNumber || '—' }}</dd></div>
+            <div><dt>Status</dt><dd>{{ humanise(r.order?.status) }}</dd></div>
+            @if (r.order?.grandTotal !== undefined) {
+              <div><dt>Value</dt><dd class="bb-money">{{ r.order.grandTotal | money }}</dd></div>
+            }
+            <div>
+              <dt>ID checked</dt>
+              <dd>
+                @if (r.recipientVerified) {
+                  <p-tag
+                    [value]="'Yes · ' + humanise(r.recipientDocumentType)"
+                    severity="success"
+                  />
+                } @else {
+                  <p-tag value="Not yet" severity="warn" />
+                }
+              </dd>
+            </div>
+            @if (r.recipientVerificationNotes) {
+              <div><dt>Notes</dt><dd>{{ r.recipientVerificationNotes }}</dd></div>
+            }
+          </dl>
+        </section>
+
+        @if (history().length) {
+          <section class="bb-card bb-panel">
+            <h2>What has happened</h2>
+            <p-timeline [value]="history()" align="left">
+              <ng-template #content let-event>
+                <div class="bb-event">
+                  <strong>{{ humanise(event.toStatus) }}</strong>
+                  <span>{{ event.createdAt || event.changedAt | date: 'd MMM, h:mm a' }}</span>
+                  @if (event.note) { <em>{{ event.note }}</em> }
+                </div>
+              </ng-template>
+            </p-timeline>
+          </section>
+        }
+      </div>
+
+      <aside class="bb-run-side">
+        <div class="bb-card bb-panel">
+          <h2>Next step</h2>
+
+          <div class="bb-actions">
+            @if (canPickUp()) {
+              <p-button
+                label="Picked up from the store"
+                icon="pi pi-box"
+                styleClass="w-full"
+                [loading]="busy()"
+                (onClick)="advance('PICKED_UP', 'Marked as picked up')"
+              />
+            }
+
+            @if (canTransit()) {
+              <p-button
+                label="On my way"
+                icon="pi pi-send"
+                styleClass="w-full"
+                [loading]="busy()"
+                (onClick)="advance('IN_TRANSIT', 'Marked as in transit')"
+              />
+            }
+
+            @if (canCheckId()) {
+              <p-button
+                label="Record the ID check"
+                icon="pi pi-id-card"
+                styleClass="w-full"
+                [loading]="busy()"
+                (onClick)="idDialog.set(true)"
+              />
+            }
+
+            @if (canComplete()) {
+              <p-button
+                label="Handed over — complete"
+                icon="pi pi-check"
+                styleClass="w-full"
+                [loading]="busy()"
+                (onClick)="complete()"
+              />
+            }
+
+            @if (canFail()) {
+              <p-button
+                label="Could not deliver"
+                icon="pi pi-times"
+                severity="danger"
+                [outlined]="true"
+                styleClass="w-full"
+                (onClick)="failDialog.set(true)"
+              />
+            }
+
+            @if (finished()) {
+              <p-message
+                [severity]="r.status === 'DELIVERED' ? 'success' : 'warn'"
+                [text]="r.status === 'DELIVERED' ? 'Delivered. Nothing more to do.' : 'This run is closed.'"
+                styleClass="w-full"
+              />
+            }
+
+            <p-button
+              label="Back to your runs"
+              icon="pi pi-arrow-left"
+              severity="secondary"
+              [text]="true"
+              styleClass="w-full"
+              (onClick)="back()"
+            />
+          </div>
+        </div>
+
+        <p class="bb-legal">
+          Bottle Bee is a technology platform; the store is the licensed seller. Refusing a handover
+          when a valid ID cannot be produced is the correct outcome, and no run is penalised for it.
+        </p>
+      </aside>
+    </div>
+  }
+</div>
+
+<!-- ID check -->
+<p-dialog
+  header="Record the ID check"
+  [visible]="idDialog()"
+  (visibleChange)="idDialog.set($event)"
+  [modal]="true"
+  [style]="{ width: '28rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  <p class="bb-dialog-lead">
+    Which document did you check? This is recorded against the delivery.
+  </p>
+
+  <div class="bb-field">
+    <span>Document type</span>
+    <p-select
+      [(ngModel)]="documentType"
+      [options]="documentTypes"
+      optionLabel="label"
+      optionValue="value"
+      styleClass="w-full"
+    />
+  </div>
+
+  <div class="bb-field">
+    <span>Notes <em>(required if you are not verifying)</em></span>
+    <textarea pTextarea rows="2" [(ngModel)]="idNotes" maxlength="500" class="w-full"></textarea>
+  </div>
+
+  <div class="bb-dialog-actions is-stacked">
+    <p-button
+      label="ID checked and valid"
+      icon="pi pi-check-circle"
+      styleClass="w-full"
+      [loading]="busy()"
+      (onClick)="checkId(true)"
+    />
+    <p-button
+      label="Could not verify their ID"
+      icon="pi pi-ban"
+      severity="danger"
+      [outlined]="true"
+      styleClass="w-full"
+      [disabled]="idNotes.trim().length < 3"
+      [loading]="busy()"
+      (onClick)="checkId(false)"
+    />
+  </div>
+</p-dialog>
+
+<!-- Failure -->
+<p-dialog
+  header="Could not deliver"
+  [visible]="failDialog()"
+  (visibleChange)="failDialog.set($event)"
+  [modal]="true"
+  [style]="{ width: '28rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  <p class="bb-dialog-lead">
+    Say what happened. The store and the customer both see this, and the order goes back to the
+    store.
+  </p>
+
+  <textarea
+    pTextarea
+    rows="3"
+    [(ngModel)]="failReason"
+    maxlength="500"
+    placeholder="Nobody at the address, no valid ID produced, recipient underage…"
+    class="w-full"
+  ></textarea>
+
+  <div class="bb-dialog-actions">
+    <p-button label="Go back" severity="secondary" [text]="true" (onClick)="failDialog.set(false)" />
+    <p-button
+      label="Mark run failed"
+      icon="pi pi-times"
+      severity="danger"
+      [disabled]="failReason.trim().length < 3"
+      [loading]="busy()"
+      (onClick)="fail()"
+    />
+  </div>
+</p-dialog>

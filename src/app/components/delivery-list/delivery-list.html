@@ -1,0 +1,191 @@
+<div class="bb-page">
+  <header class="bb-runs-head">
+    <div>
+      <h1 class="bb-page-title">Your runs</h1>
+      <p class="bb-page-subtitle">
+        @if (liveCount() === 1) { 1 run needs you } @else { {{ liveCount() }} runs need you }
+      </p>
+    </div>
+
+    <div class="bb-runs-tools">
+      <p-button
+        icon="pi pi-map-marker"
+        label="Share location"
+        severity="secondary"
+        [outlined]="true"
+        size="small"
+        (onClick)="shareLocation()"
+      />
+      <p-button
+        icon="pi pi-user-edit"
+        label="My details"
+        severity="secondary"
+        [text]="true"
+        size="small"
+        (onClick)="profileDialog.set(true)"
+      />
+    </div>
+  </header>
+
+  @if (loading() || error()) {
+    <bb-state-block [loading]="loading()" [error]="error()" loadingText="Loading your runs…" (retry)="load()" />
+  } @else if (noProfile()) {
+    <bb-state-block
+      [empty]="true"
+      emptyIcon="pi-id-card"
+      emptyTitle="Tell us about your vehicle"
+      emptyText="Add your vehicle and driving licence. An administrator reviews them before you can take runs."
+    >
+      <p-button label="Add my details" icon="pi pi-plus" (onClick)="profileDialog.set(true)" />
+    </bb-state-block>
+  } @else {
+    @if (partner(); as p) {
+      @if (p.status === 'PENDING') {
+        <p-message
+          severity="warn"
+          text="Your details are awaiting review. You will not be assigned runs until they are approved."
+          styleClass="w-full mb-3"
+        />
+      } @else if (p.status === 'SUSPENDED') {
+        <p-message
+          severity="error"
+          [text]="'Your account is suspended. ' + (p.rejectionReason || 'Contact support.')"
+          styleClass="w-full mb-3"
+        />
+      }
+    }
+
+    <p-selectbutton
+      [(ngModel)]="filter"
+      [options]="filters"
+      optionLabel="label"
+      optionValue="value"
+      [allowEmpty]="false"
+      styleClass="mb-3"
+    />
+
+    @if (!visible().length) {
+      <bb-state-block
+        [empty]="true"
+        emptyIcon="pi-check-circle"
+        emptyTitle="Nothing here"
+        [emptyText]="filter === 'LIVE' ? 'No runs waiting. We will let you know when one comes in.' : 'No runs match that filter.'"
+      />
+    } @else {
+      <div class="bb-runs">
+        @for (run of visible(); track run.id) {
+          <article class="bb-run bb-card">
+            <header>
+              <div>
+                <strong>{{ run.order?.orderNumber || 'Order ' + run.orderId }}</strong>
+                <span class="bb-run-when">
+                  Assigned {{ run.assignedAt || run.createdAt | date: 'd MMM, h:mm a' }}
+                </span>
+              </div>
+              <p-tag [value]="humanise(run.status)" [severity]="toneFor(run.status, 'delivery')" />
+            </header>
+
+            @if (run.order?.deliveryAddress; as address) {
+              <address>
+                <strong>{{ address.recipientName }}</strong>
+                <span>{{ address.addressLine1 }}</span>
+                @if (address.addressLine2) { <span>{{ address.addressLine2 }}</span> }
+                <span>{{ address.city }}, {{ address.state }} {{ address.postalCode }}</span>
+                @if (address.deliveryInstructions) { <em>{{ address.deliveryInstructions }}</em> }
+              </address>
+            }
+
+            <div class="bb-run-facts">
+              @if (run.order?.grandTotal !== undefined) {
+                <span><i class="pi pi-wallet"></i> {{ run.order.grandTotal | money }}</span>
+              }
+              <span>
+                <i class="pi pi-id-card"></i>
+                {{ run.recipientVerified ? 'ID checked' : 'ID not checked' }}
+              </span>
+            </div>
+
+            <footer>
+              @if (run.status === 'ASSIGNED') {
+                <p-button
+                  label="Accept"
+                  icon="pi pi-check"
+                  styleClass="flex-1"
+                  [loading]="busyId() === run.id"
+                  (onClick)="respond(run, true)"
+                />
+                <p-button
+                  label="Decline"
+                  icon="pi pi-times"
+                  severity="secondary"
+                  [outlined]="true"
+                  [loading]="busyId() === run.id"
+                  (onClick)="respond(run, false)"
+                />
+              } @else {
+                <a [routerLink]="['/delivery/my-deliveries', run.id]" class="bb-run-open">
+                  <p-button
+                    label="Open this run"
+                    icon="pi pi-arrow-right"
+                    iconPos="right"
+                    styleClass="w-full"
+                  />
+                </a>
+              }
+            </footer>
+          </article>
+        }
+      </div>
+    }
+  }
+</div>
+
+<p-dialog
+  header="Your vehicle and licence"
+  [visible]="profileDialog()"
+  (visibleChange)="profileDialog.set($event)"
+  [modal]="true"
+  [style]="{ width: '28rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  <p class="bb-dialog-lead">
+    Delivering alcohol requires a valid driving licence on file. An administrator checks it before
+    you are assigned any run.
+  </p>
+
+  <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" novalidate>
+    <div class="bb-field">
+      <span>Vehicle type</span>
+      <p-select
+        formControlName="vehicleType"
+        [options]="vehicleTypes"
+        optionLabel="label"
+        optionValue="value"
+        styleClass="w-full"
+      />
+    </div>
+
+    <label class="bb-field">
+      <span>Vehicle number</span>
+      <input pInputText formControlName="vehicleNumber" placeholder="KA01AB1234" />
+      @if (invalid('vehicleNumber')) { <small class="bb-error">Required.</small> }
+    </label>
+
+    <label class="bb-field">
+      <span>Driving licence number</span>
+      <input pInputText formControlName="licenseNumber" autocomplete="off" />
+      @if (invalid('licenseNumber')) { <small class="bb-error">Required.</small> }
+    </label>
+
+    <label class="bb-field">
+      <span>Photo of your licence</span>
+      <input type="file" accept="image/*,application/pdf" (change)="pickFile($event)" class="bb-file" />
+      @if (licenseDocument) { <small class="bb-ok">{{ licenseDocument.name }}</small> }
+    </label>
+
+    <div class="bb-dialog-actions">
+      <p-button label="Cancel" severity="secondary" [text]="true" type="button" (onClick)="profileDialog.set(false)" />
+      <p-button label="Save details" icon="pi pi-check" type="submit" [loading]="savingProfile()" />
+    </div>
+  </form>
+</p-dialog>

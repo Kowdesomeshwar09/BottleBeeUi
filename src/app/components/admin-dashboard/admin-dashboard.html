@@ -1,0 +1,130 @@
+<div class="bb-page">
+  <header class="bb-ad-head">
+    <div>
+      <h1 class="bb-page-title">Dashboard</h1>
+      <p class="bb-page-subtitle">
+        @if (data()?.window; as w) {
+          {{ w.from | date: 'd MMM' }} – {{ w.to | date: 'd MMM y' }}
+        }
+      </p>
+    </div>
+
+    <p-selectbutton
+      [(ngModel)]="days"
+      [options]="windows"
+      optionLabel="label"
+      optionValue="value"
+      [allowEmpty]="false"
+      (onChange)="load()"
+    />
+  </header>
+
+  @if (loading() || error()) {
+    <bb-state-block [loading]="loading()" [error]="error()" loadingText="Building the dashboard…" (retry)="load()" />
+  } @else if (data(); as d) {
+    <!-- What is waiting on a human -->
+    <section class="bb-queue-block">
+      <h2 class="bb-section-title">
+        Waiting on you
+        @if (totalWaiting() > 0) { <span class="bb-badge">{{ totalWaiting() }}</span> }
+      </h2>
+
+      @if (!queue().length) {
+        <div class="bb-card bb-clear">
+          <i class="pi pi-check-circle"></i>
+          <div>
+            <strong>Nothing in the queue</strong>
+            <span>No verifications, licences, applications or refunds are pending.</span>
+          </div>
+        </div>
+      } @else {
+        <div class="bb-queue">
+          @for (item of queue(); track item.key) {
+            <article class="bb-queue-item bb-card" [class.is-urgent]="item.urgent">
+              <div class="bb-queue-count">{{ item.count }}</div>
+              <div class="bb-queue-body">
+                <strong>{{ item.label }}</strong>
+                @if (item.note) { <span>{{ item.note }}</span> }
+              </div>
+              @if (item.route) {
+                <a [routerLink]="item.route">
+                  <p-button
+                    icon="pi pi-arrow-right"
+                    severity="secondary"
+                    [text]="true"
+                    [attr.aria-label]="'Open ' + item.label"
+                  />
+                </a>
+              }
+            </article>
+          }
+        </div>
+      }
+    </section>
+
+    <!-- Trading -->
+    <h2 class="bb-section-title">Trading in this window</h2>
+    <div class="bb-stats">
+      <div class="bb-stat bb-card">
+        <span>Orders</span>
+        <strong>{{ d.orders?.inWindow ?? 0 }}</strong>
+      </div>
+      <div class="bb-stat bb-card">
+        <span>Delivered</span>
+        <strong>{{ d.orders?.delivered ?? 0 }}</strong>
+      </div>
+      <div class="bb-stat bb-card">
+        <span>Revenue</span>
+        <strong class="bb-money">{{ d.revenue?.total ?? 0 | money }}</strong>
+      </div>
+      <div class="bb-stat bb-card">
+        <span>Average order</span>
+        <strong class="bb-money">{{ d.revenue?.averageOrderValue ?? 0 | money }}</strong>
+      </div>
+      <div class="bb-stat bb-card" [class.is-alert]="(d.orders?.cancellationRate ?? 0) > 15">
+        <span>Cancelled</span>
+        <strong>{{ d.orders?.cancellationRate ?? 0 }}%</strong>
+      </div>
+    </div>
+
+    <div class="bb-two-col">
+      <section class="bb-card bb-panel">
+        <h3>Orders by status</h3>
+        @if (!statusRows().length) {
+          <p class="bb-panel-empty">No orders in this window.</p>
+        } @else {
+          <ul class="bb-status-list">
+            @for (row of statusRows(); track row.status) {
+              <li>
+                <p-tag [value]="humanise(row.status)" [severity]="toneFor(row.status, 'order')" />
+                <strong>{{ row.count }}</strong>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section class="bb-card bb-panel">
+        <h3>Platform</h3>
+        <dl>
+          <div><dt>Customers</dt><dd>{{ d.users?.customers ?? 0 }}</dd></div>
+          <div>
+            <dt>Age verified</dt>
+            <dd>
+              {{ d.users?.ageVerifiedCustomers ?? 0 }}
+              <em>({{ d.users?.verificationRate ?? 0 }}%)</em>
+            </dd>
+          </div>
+          <div><dt>Stores approved</dt><dd>{{ d.vendors?.approved ?? 0 }} of {{ d.vendors?.total ?? 0 }}</dd></div>
+          <div><dt>Products live</dt><dd>{{ d.catalog?.live ?? 0 }} of {{ d.catalog?.total ?? 0 }}</dd></div>
+          <div><dt>Riders active</dt><dd>{{ d.delivery?.activePartners ?? 0 }}</dd></div>
+          <div><dt>Deliveries in flight</dt><dd>{{ d.delivery?.liveDeliveries ?? 0 }}</dd></div>
+          <div [class.bb-alert-row]="(d.inventory?.outOfStockSkus ?? 0) > 0">
+            <dt>SKUs out of stock</dt>
+            <dd>{{ d.inventory?.outOfStockSkus ?? 0 }}</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+  }
+</div>

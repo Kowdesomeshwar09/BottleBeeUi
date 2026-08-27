@@ -1,0 +1,257 @@
+<div class="bb-page">
+  <header class="bb-vi-head">
+    <div>
+      <h1 class="bb-page-title">Stock</h1>
+      <p class="bb-page-subtitle">
+        Reserved units are already promised to orders that have not left yet.
+      </p>
+    </div>
+
+    <div class="bb-vi-tools">
+      <p-iconfield>
+        <p-inputicon styleClass="pi pi-search" />
+        <input
+          pInputText
+          type="search"
+          [ngModel]="search"
+          (ngModelChange)="onSearch($event)"
+          placeholder="Search by product or SKU"
+          aria-label="Search stock"
+        />
+      </p-iconfield>
+
+      <p-selectbutton
+        [(ngModel)]="view"
+        [options]="views"
+        optionLabel="label"
+        optionValue="value"
+        [allowEmpty]="false"
+        (onChange)="onView()"
+      />
+    </div>
+  </header>
+
+  @if (summary(); as s) {
+    <div class="bb-stats">
+      <div class="bb-stat bb-card">
+        <span>SKUs</span>
+        <strong>{{ s.totalSkus ?? 0 }}</strong>
+      </div>
+      <div class="bb-stat bb-card" [class.is-alert]="(s.outOfStock ?? 0) > 0">
+        <span>Out of stock</span>
+        <strong>{{ s.outOfStock ?? 0 }}</strong>
+      </div>
+      <div class="bb-stat bb-card" [class.is-alert]="(s.lowStock ?? 0) > 0">
+        <span>Running low</span>
+        <strong>{{ s.lowStock ?? 0 }}</strong>
+      </div>
+      <div class="bb-stat bb-card">
+        <span>Units available</span>
+        <strong>{{ s.unitsAvailable ?? 0 }}</strong>
+      </div>
+      <div class="bb-stat bb-card">
+        <span>Units reserved</span>
+        <strong>{{ s.unitsReserved ?? 0 }}</strong>
+      </div>
+    </div>
+  }
+
+  @if (loading() || error()) {
+    <bb-state-block [loading]="loading()" [error]="error()" loadingText="Loading your stock…" (retry)="load()" />
+  } @else if (!rowsData().length) {
+    <bb-state-block
+      [empty]="true"
+      emptyIcon="pi-database"
+      emptyTitle="Nothing to show"
+      [emptyText]="view === 'LOW' ? 'Nothing is running low. Good.' : 'Add a product with a size to start tracking stock.'"
+    />
+  } @else {
+    <div class="bb-card">
+      <p-table
+        [value]="rowsData()"
+        [lazy]="true"
+        [paginator]="true"
+        [rows]="rows"
+        [first]="first"
+        [totalRecords]="total()"
+        [rowsPerPageOptions]="[25, 50, 100]"
+        (onPage)="onPage($event)"
+        styleClass="bb-table"
+        [tableStyle]="{ 'min-width': '54rem' }"
+      >
+        <ng-template #header>
+          <tr>
+            <th>Product</th>
+            <th>SKU</th>
+            <th class="bb-right">Price</th>
+            <th class="bb-right">Available</th>
+            <th class="bb-right">Reserved</th>
+            <th class="bb-right">Warn below</th>
+            <th>Updated</th>
+            <th class="bb-right">Actions</th>
+          </tr>
+        </ng-template>
+
+        <ng-template #body let-row>
+          <tr [class.bb-row-low]="row.isLow">
+            <td>
+              <div class="bb-name-cell">
+                <strong>{{ row.product?.name || '—' }}</strong>
+                <span>
+                  @if (row.variant?.sizeMl) { {{ row.variant.sizeMl }} ml }
+                  @if (row.variant?.packSize > 1) { · pack of {{ row.variant.packSize }} }
+                </span>
+              </div>
+            </td>
+            <td class="bb-nowrap">{{ row.variant?.sku || '—' }}</td>
+            <td class="bb-right bb-money">
+              @if (row.variant?.sellingPrice !== undefined) { {{ row.variant.sellingPrice | money }} }
+              @else { — }
+            </td>
+            <td class="bb-right">
+              <strong [class.bb-zero]="row.quantityAvailable === 0">{{ row.quantityAvailable }}</strong>
+              @if (row.isLow && row.quantityAvailable > 0) {
+                <p-tag value="Low" severity="warn" styleClass="ml-2" />
+              }
+              @if (row.quantityAvailable === 0) {
+                <p-tag value="Out" severity="danger" styleClass="ml-2" />
+              }
+            </td>
+            <td class="bb-right">{{ row.quantityReserved }}</td>
+            <td class="bb-right">{{ row.reorderLevel }}</td>
+            <td class="bb-nowrap">{{ row.updatedAt | date: 'd MMM, h:mm a' }}</td>
+            <td class="bb-right">
+              <div class="bb-row-actions">
+                <p-button
+                  label="Adjust"
+                  icon="pi pi-pencil"
+                  size="small"
+                  (onClick)="openAdjust(row)"
+                />
+                <p-button
+                  icon="pi pi-history"
+                  severity="secondary"
+                  [text]="true"
+                  size="small"
+                  pTooltip="Movements"
+                  (onClick)="openLedger(row)"
+                />
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  }
+</div>
+
+<!-- Adjust -->
+<p-dialog
+  [header]="'Adjust ' + (adjustTarget?.product?.name || 'stock')"
+  [visible]="adjustOpen()"
+  (visibleChange)="adjustOpen.set($event)"
+  [modal]="true"
+  [style]="{ width: '30rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  @if (adjustTarget; as row) {
+    <dl class="bb-current">
+      <div><dt>On the shelf now</dt><dd><strong>{{ row.quantityAvailable }}</strong></dd></div>
+      <div><dt>Reserved for orders</dt><dd>{{ row.quantityReserved }}</dd></div>
+    </dl>
+
+    <p-divider />
+
+    <div class="bb-field">
+      <span>What happened</span>
+      <p-select
+        [(ngModel)]="transactionType"
+        [options]="movementTypes"
+        optionLabel="label"
+        optionValue="value"
+        styleClass="w-full"
+      />
+      <small class="bb-hint">{{ adjustHint }}</small>
+    </div>
+
+    <div class="bb-grid-2">
+      <div class="bb-field">
+        <span>{{ transactionType === 'ADJUSTMENT' ? 'Counted units' : 'Units' }}</span>
+        <p-inputnumber
+          [(ngModel)]="quantity"
+          [min]="0"
+          [showButtons]="true"
+          buttonLayout="horizontal"
+          incrementButtonIcon="pi pi-plus"
+          decrementButtonIcon="pi pi-minus"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+        />
+      </div>
+
+      <div class="bb-field">
+        <span>Warn me below</span>
+        <p-inputnumber [(ngModel)]="reorderLevel" [min]="0" styleClass="w-full" inputStyleClass="w-full" />
+      </div>
+    </div>
+
+    @if (projected !== null) {
+      <p-message
+        severity="info"
+        [text]="'The shelf will read ' + projected + ' after this.'"
+        styleClass="w-full mb-3"
+      />
+    }
+
+    <div class="bb-field">
+      <span>Note <em>(optional, but it is what explains the number later)</em></span>
+      <textarea pTextarea rows="2" [(ngModel)]="notes" maxlength="500"></textarea>
+    </div>
+
+    <div class="bb-dialog-actions">
+      <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="adjustOpen.set(false)" />
+      <p-button label="Apply" icon="pi pi-check" [loading]="adjusting()" (onClick)="applyAdjust()" />
+    </div>
+  }
+</p-dialog>
+
+<!-- Ledger -->
+<p-dialog
+  [header]="'Movements — ' + (ledgerTarget?.variant?.sku || '')"
+  [visible]="ledgerOpen()"
+  (visibleChange)="ledgerOpen.set($event)"
+  [modal]="true"
+  [style]="{ width: '34rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  @if (ledgerLoading()) {
+    <bb-state-block [loading]="true" loadingText="Loading movements…" />
+  } @else if (!ledger().length) {
+    <bb-state-block
+      [empty]="true"
+      emptyIcon="pi-history"
+      emptyTitle="No movements recorded"
+      emptyText="Adjustments, sales and returns will appear here."
+    />
+  } @else {
+    <ul class="bb-ledger">
+      @for (entry of ledger(); track entry.id) {
+        <li>
+          <div>
+            <strong>{{ humanise(entry.transactionType) }}</strong>
+            <span>{{ entry.createdAt | date: 'd MMM y, h:mm a' }}</span>
+            @if (entry.notes) { <em>{{ entry.notes }}</em> }
+          </div>
+          <div class="bb-ledger-qty">
+            <strong [class.is-in]="entry.quantity > 0" [class.is-out]="entry.quantity < 0">
+              {{ entry.quantity > 0 ? '+' : '' }}{{ entry.quantity }}
+            </strong>
+            @if (entry.balanceAfter !== undefined && entry.balanceAfter !== null) {
+              <span>to {{ entry.balanceAfter }}</span>
+            }
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</p-dialog>

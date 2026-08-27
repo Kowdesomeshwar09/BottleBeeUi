@@ -49,6 +49,11 @@ export class AdminFacadeService {
   roles(payload: any = {}): Observable<ApiResponse> { return this.admin.roles(payload); }
   permissionMatrix(): Observable<ApiResponse> { return this.admin.permissionMatrix(); }
 
+  /* ------------------------------ orders ---------------------------- */
+  orders(payload: any = {}): Observable<ApiResponse> { return this.admin.orders(payload); }
+  orderDetail(id: number): Observable<ApiResponse> { return this.admin.orderDetail(id); }
+  updateOrderStatus(payload: any): Observable<ApiResponse> { return this.admin.updateOrderStatus(payload); }
+
   /* ----------------------------- delivery --------------------------- */
   deliveryPartners(payload: any = {}): Observable<ApiResponse> { return this.admin.deliveryPartners(payload); }
   reviewDeliveryPartner(payload: any): Observable<ApiResponse> { return this.admin.reviewDeliveryPartner(payload); }

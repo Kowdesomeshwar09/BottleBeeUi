@@ -1,0 +1,222 @@
+<div class="bb-page">
+  <header class="bb-vo-head">
+    <div>
+      <h1 class="bb-page-title">Store orders</h1>
+      <p class="bb-page-subtitle">Confirm, pack and hand over. Delivery is assigned by dispatch.</p>
+    </div>
+
+    <p-select
+      [(ngModel)]="filter"
+      [options]="statusFilters"
+      optionLabel="label"
+      optionValue="value"
+      (onChange)="onFilter()"
+      styleClass="bb-vo-filter"
+      ariaLabel="Filter by status"
+    />
+  </header>
+
+  @if (summary(); as s) {
+    <div class="bb-stats">
+      <div class="bb-stat bb-card">
+        <span>Orders</span>
+        <strong>{{ s.totalOrders ?? 0 }}</strong>
+      </div>
+      <div class="bb-stat bb-card">
+        <span>Delivered</span>
+        <strong>{{ s.deliveredOrders ?? 0 }}</strong>
+      </div>
+      <div class="bb-stat bb-card">
+        <span>Revenue</span>
+        <strong class="bb-money">{{ s.revenue ?? 0 | money }}</strong>
+      </div>
+      <div class="bb-stat bb-card">
+        <span>Average order</span>
+        <strong class="bb-money">{{ s.averageOrderValue ?? 0 | money }}</strong>
+      </div>
+    </div>
+  }
+
+  @if (loading() || error()) {
+    <bb-state-block [loading]="loading()" [error]="error()" loadingText="Loading orders…" (retry)="load()" />
+  } @else if (!orders().length) {
+    <bb-state-block
+      [empty]="true"
+      emptyIcon="pi-receipt"
+      emptyTitle="No orders here"
+      [emptyText]="filter === 'OPEN' ? 'Nothing waiting on you right now.' : 'Nothing matches that filter.'"
+    />
+  } @else {
+    <div class="bb-card">
+      <p-table
+        [value]="orders()"
+        [lazy]="true"
+        [paginator]="true"
+        [rows]="rows"
+        [first]="first"
+        [totalRecords]="total()"
+        [rowsPerPageOptions]="[20, 50, 100]"
+        (onPage)="onPage($event)"
+        styleClass="bb-table"
+        [tableStyle]="{ 'min-width': '54rem' }"
+      >
+        <ng-template #header>
+          <tr>
+            <th>Order</th>
+            <th>Items</th>
+            <th>Placed</th>
+            <th>Status</th>
+            <th>Payment</th>
+            <th class="bb-right">Total</th>
+            <th class="bb-right">Action</th>
+          </tr>
+        </ng-template>
+
+        <ng-template #body let-order>
+          <tr>
+            <td>
+              <button type="button" class="bb-link-btn" (click)="openDetail(order)">
+                {{ order.orderNumber }}
+              </button>
+            </td>
+            <td class="bb-items-cell">{{ itemSummary(order) }}</td>
+            <td class="bb-nowrap">{{ order.createdAt | date: 'd MMM, h:mm a' }}</td>
+            <td><p-tag [value]="humanise(order.status)" [severity]="toneFor(order.status, 'order')" /></td>
+            <td>
+              <p-tag
+                [value]="humanise(order.paymentStatus)"
+                [severity]="toneFor(order.paymentStatus, 'payment')"
+              />
+            </td>
+            <td class="bb-right bb-money">{{ order.grandTotal | money }}</td>
+            <td class="bb-right">
+              <div class="bb-row-actions">
+                @if (action(order); as next) {
+                  <p-button
+                    [label]="next.label"
+                    [icon]="next.icon"
+                    size="small"
+                    [loading]="busyId() === order.id"
+                    (onClick)="advance(order)"
+                  />
+                }
+                @if (order.allowedNextStatuses?.includes('CANCELLED')) {
+                  <p-button
+                    icon="pi pi-times"
+                    severity="danger"
+                    [text]="true"
+                    size="small"
+                    pTooltip="Cancel this order"
+                    (onClick)="askCancel(order)"
+                  />
+                }
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  }
+</div>
+
+<!-- Detail -->
+<p-dialog
+  [header]="detail()?.orderNumber || 'Order'"
+  [visible]="detailOpen()"
+  (visibleChange)="detailOpen.set($event)"
+  [modal]="true"
+  [style]="{ width: '34rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  @if (loadingDetail()) {
+    <bb-state-block [loading]="true" loadingText="Loading the order…" />
+  } @else if (detail(); as d) {
+    <div class="bb-detail-tags">
+      <p-tag [value]="humanise(d.status)" [severity]="toneFor(d.status, 'order')" />
+      <p-tag [value]="humanise(d.paymentStatus)" [severity]="toneFor(d.paymentStatus, 'payment')" />
+    </div>
+
+    <h3>Items</h3>
+    <ul class="bb-item-list">
+      @for (item of d.items; track item.id) {
+        <li>
+          <div>
+            <strong>{{ item.productName }}</strong>
+            <span>{{ item.variantLabel || item.sku }} · SKU {{ item.sku }}</span>
+          </div>
+          <div class="bb-item-right">
+            <span>{{ item.quantity }} × {{ item.unitPrice | money }}</span>
+            <strong class="bb-money">{{ item.lineTotal | money }}</strong>
+          </div>
+        </li>
+      }
+    </ul>
+
+    <p-divider />
+
+    <dl>
+      <div><dt>Subtotal</dt><dd class="bb-money">{{ d.subtotal | money }}</dd></div>
+      @if (d.discountTotal > 0) {
+        <div><dt>Discount</dt><dd class="bb-money">−{{ d.discountTotal | money }}</dd></div>
+      }
+      <div><dt>Tax</dt><dd class="bb-money">{{ d.taxTotal | money }}</dd></div>
+      <div><dt>Delivery</dt><dd class="bb-money">{{ d.deliveryFee | money }}</dd></div>
+      <div class="is-total"><dt>Total</dt><dd class="bb-money">{{ d.grandTotal | money }}</dd></div>
+    </dl>
+
+    @if (d.deliveryAddress; as address) {
+      <p-divider />
+      <h3>Delivering to</h3>
+      <address>
+        <strong>{{ address.recipientName }}</strong>
+        @if (address.phone) { <span>{{ address.phone }}</span> }
+        <span>{{ address.addressLine1 }}</span>
+        @if (address.addressLine2) { <span>{{ address.addressLine2 }}</span> }
+        <span>{{ address.city }}, {{ address.state }} {{ address.postalCode }}</span>
+        @if (address.regionCode) { <em>Region {{ address.regionCode }}</em> }
+      </address>
+    }
+
+    @if (d.customerNotes) {
+      <p-divider />
+      <h3>Customer note</h3>
+      <p class="bb-note">{{ d.customerNotes }}</p>
+    }
+  }
+</p-dialog>
+
+<!-- Cancel -->
+<p-dialog
+  header="Cancel this order"
+  [visible]="cancelOpen()"
+  (visibleChange)="cancelOpen.set($event)"
+  [modal]="true"
+  [style]="{ width: '28rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  <p class="bb-dialog-lead">
+    The customer sees this reason, the reserved stock goes back to your shelf, and any payment is
+    refunded. Say what went wrong.
+  </p>
+
+  <textarea
+    pTextarea
+    rows="3"
+    [(ngModel)]="cancelReason"
+    maxlength="500"
+    placeholder="Out of stock, cannot deliver to that area, store closing…"
+    class="w-full"
+  ></textarea>
+
+  <div class="bb-dialog-actions">
+    <p-button label="Keep it" severity="secondary" [text]="true" (onClick)="cancelOpen.set(false)" />
+    <p-button
+      label="Cancel the order"
+      icon="pi pi-times"
+      severity="danger"
+      [disabled]="cancelReason.trim().length < 3"
+      [loading]="cancelling()"
+      (onClick)="confirmCancel()"
+    />
+  </div>
+</p-dialog>

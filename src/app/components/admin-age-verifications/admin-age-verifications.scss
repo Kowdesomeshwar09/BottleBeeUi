@@ -1,0 +1,66 @@
+.bb-av-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
+}
+
+:host ::ng-deep .bb-filter {
+  min-width: 13rem;
+}
+
+.bb-sub {
+  font-size: 0.74rem;
+  color: var(--bb-muted);
+
+  &.is-danger {
+    color: #b91c1c;
+  }
+}
+
+.bb-underage {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.bb-doc-note {
+  margin: 0 0 0.85rem;
+  font-size: 0.83rem;
+  color: var(--bb-muted);
+}
+
+.bb-docs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.75rem;
+
+  figure {
+    margin: 0;
+    border: 1px solid var(--bb-line);
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fafaf9;
+  }
+
+  img {
+    display: block;
+    width: 100%;
+    max-height: 14rem;
+    object-fit: contain;
+    background: #fff;
+  }
+
+  figcaption {
+    padding: 0.45rem 0.6rem;
+    font-size: 0.74rem;
+    color: var(--bb-muted);
+    border-top: 1px solid var(--bb-line);
+
+    a {
+      color: var(--bb-honey);
+      font-weight: 600;
+    }
+  }
+}

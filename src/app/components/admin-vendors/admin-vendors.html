@@ -1,0 +1,415 @@
+<div class="bb-page">
+  <h1 class="bb-page-title">Stores and licences</h1>
+  <p class="bb-page-subtitle">
+    A store cannot be approved until one of its excise licences has been. The API enforces it; this
+    screen shows you both sides of the decision.
+  </p>
+
+  @if (expiringLicences().length) {
+    <p-message
+      severity="warn"
+      [text]="expiringLicences().length + ' approved licence(s) lapse within 30 days. A store loses the right to sell the day its licence expires.'"
+      styleClass="w-full mb-3"
+    />
+  }
+
+  <p-tabs value="vendors">
+    <p-tablist>
+      <p-tab value="vendors"><i class="pi pi-building"></i> Stores</p-tab>
+      <p-tab value="licences"><i class="pi pi-file"></i> Licences</p-tab>
+    </p-tablist>
+
+    <p-tabpanels>
+      <!-- --------------------------------- stores ------------------------- -->
+      <p-tabpanel value="vendors">
+        <div class="bb-tab-tools">
+          <p-select
+            [(ngModel)]="vendorFilter"
+            [options]="vendorFilters"
+            optionLabel="label"
+            optionValue="value"
+            (onChange)="load()"
+            styleClass="bb-filter"
+            ariaLabel="Filter stores by status"
+          />
+        </div>
+
+        @if (loading() || error()) {
+          <bb-state-block [loading]="loading()" [error]="error()" loadingText="Loading stores…" (retry)="load()" />
+        } @else if (!vendors().length) {
+          <bb-state-block
+            [empty]="true"
+            emptyIcon="pi-building"
+            emptyTitle="No stores here"
+            [emptyText]="vendorFilter === 'PENDING' ? 'No applications waiting.' : 'Nothing matches that filter.'"
+          />
+        } @else {
+          <div class="bb-card">
+            <p-table [value]="vendors()" styleClass="bb-table" [tableStyle]="{ 'min-width': '54rem' }">
+              <ng-template #header>
+                <tr>
+                  <th>Store</th>
+                  <th>Owner</th>
+                  <th>Contact</th>
+                  <th class="bb-right">Commission</th>
+                  <th class="bb-right">Min order</th>
+                  <th>Applied</th>
+                  <th>Status</th>
+                  <th class="bb-right">Decision</th>
+                </tr>
+              </ng-template>
+
+              <ng-template #body let-vendor>
+                <tr>
+                  <td>
+                    <button type="button" class="bb-link-btn" (click)="openDetail(vendor)">
+                      {{ vendor.businessName }}
+                    </button>
+                    @if (vendor.legalName && vendor.legalName !== vendor.businessName) {
+                      <div class="bb-sub">{{ vendor.legalName }}</div>
+                    }
+                    @if (vendor.status === 'REJECTED' && vendor.rejectionReason) {
+                      <div class="bb-sub is-danger">{{ vendor.rejectionReason }}</div>
+                    }
+                  </td>
+                  <td>
+                    @if (vendor.owner) {
+                      {{ vendor.owner.firstName }} {{ vendor.owner.lastName }}
+                    } @else { — }
+                  </td>
+                  <td class="bb-nowrap">
+                    <div class="bb-sub">{{ vendor.email }}</div>
+                    <div class="bb-sub">{{ vendor.phone }}</div>
+                  </td>
+                  <td class="bb-right">{{ vendor.commissionPercent }}%</td>
+                  <td class="bb-right bb-money">
+                    @if (vendor.minOrderAmount !== null) { {{ vendor.minOrderAmount | money }} }
+                    @else { — }
+                  </td>
+                  <td class="bb-nowrap">{{ vendor.createdAt | date: 'd MMM y' }}</td>
+                  <td><p-tag [value]="humanise(vendor.status)" [severity]="toneFor(vendor.status)" /></td>
+                  <td class="bb-right">
+                    <div class="bb-row-actions">
+                      @if (vendor.status === 'PENDING' || vendor.status === 'REJECTED') {
+                        <p-button
+                          label="Approve"
+                          icon="pi pi-check"
+                          size="small"
+                          [loading]="busyId() === vendor.id"
+                          (onClick)="askReview(vendor, 'APPROVED')"
+                        />
+                      }
+                      @if (vendor.status === 'PENDING') {
+                        <p-button
+                          label="Reject"
+                          icon="pi pi-times"
+                          severity="danger"
+                          [outlined]="true"
+                          size="small"
+                          (onClick)="askReview(vendor, 'REJECTED')"
+                        />
+                      }
+                      @if (vendor.status === 'APPROVED') {
+                        <p-button
+                          label="Suspend"
+                          icon="pi pi-ban"
+                          severity="danger"
+                          [outlined]="true"
+                          size="small"
+                          (onClick)="askReview(vendor, 'SUSPENDED')"
+                        />
+                      }
+                      @if (vendor.status === 'SUSPENDED') {
+                        <p-button
+                          label="Reinstate"
+                          icon="pi pi-undo"
+                          size="small"
+                          (onClick)="askReview(vendor, 'APPROVED')"
+                        />
+                      }
+                    </div>
+                  </td>
+                </tr>
+              </ng-template>
+            </p-table>
+          </div>
+        }
+      </p-tabpanel>
+
+      <!-- -------------------------------- licences ------------------------ -->
+      <p-tabpanel value="licences">
+        <div class="bb-tab-tools">
+          <p-select
+            [(ngModel)]="licenceFilter"
+            [options]="licenceFilters"
+            optionLabel="label"
+            optionValue="value"
+            (onChange)="loadLicences()"
+            styleClass="bb-filter"
+            ariaLabel="Filter licences by status"
+          />
+        </div>
+
+        @if (loadingLicences() || licenceError()) {
+          <bb-state-block
+            [loading]="loadingLicences()"
+            [error]="licenceError()"
+            loadingText="Loading licences…"
+            (retry)="loadLicences()"
+          />
+        } @else if (!licences().length) {
+          <bb-state-block
+            [empty]="true"
+            emptyIcon="pi-file"
+            emptyTitle="No licences here"
+            [emptyText]="licenceFilter === 'PENDING' ? 'Nothing waiting to be verified.' : 'Nothing matches that filter.'"
+          />
+        } @else {
+          <div class="bb-card">
+            <p-table [value]="licences()" styleClass="bb-table" [tableStyle]="{ 'min-width': '56rem' }">
+              <ng-template #header>
+                <tr>
+                  <th>Licence</th>
+                  <th>Type</th>
+                  <th>Authority</th>
+                  <th>Region</th>
+                  <th>Valid until</th>
+                  <th>Document</th>
+                  <th>Status</th>
+                  <th class="bb-right">Decision</th>
+                </tr>
+              </ng-template>
+
+              <ng-template #body let-licence>
+                <tr>
+                  <td class="bb-nowrap">{{ licence.licenseNumber }}</td>
+                  <td>{{ licence.licenseType }}</td>
+                  <td>{{ licence.issuingAuthority }}</td>
+                  <td>{{ licence.regionCode }}</td>
+                  <td class="bb-nowrap">
+                    {{ licence.validUntil | date: 'd MMM y' }}
+                    @if (licence.status === 'APPROVED') {
+                      @if (daysLeft(licence.validUntil) < 0) {
+                        <p-tag value="Expired" severity="danger" styleClass="ml-2" />
+                      } @else if (daysLeft(licence.validUntil) <= 30) {
+                        <p-tag
+                          [value]="daysLeft(licence.validUntil) + ' days'"
+                          severity="warn"
+                          styleClass="ml-2"
+                        />
+                      }
+                    }
+                  </td>
+                  <td>
+                    @if (licence.documentUrl) {
+                      <a [href]="licence.documentUrl" target="_blank" rel="noopener" class="bb-link-btn">
+                        View
+                      </a>
+                    } @else { — }
+                  </td>
+                  <td><p-tag [value]="humanise(licence.status)" [severity]="toneFor(licence.status)" /></td>
+                  <td class="bb-right">
+                    <div class="bb-row-actions">
+                      @if (licence.status === 'PENDING') {
+                        <p-button
+                          label="Approve"
+                          icon="pi pi-check"
+                          size="small"
+                          (onClick)="askLicence(licence, 'APPROVED')"
+                        />
+                        <p-button
+                          label="Reject"
+                          icon="pi pi-times"
+                          severity="danger"
+                          [outlined]="true"
+                          size="small"
+                          (onClick)="askLicence(licence, 'REJECTED')"
+                        />
+                      } @else if (licence.rejectionReason) {
+                        <span class="bb-sub is-danger">{{ licence.rejectionReason }}</span>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              </ng-template>
+            </p-table>
+          </div>
+        }
+      </p-tabpanel>
+    </p-tabpanels>
+  </p-tabs>
+</div>
+
+<!-- Store detail -->
+<p-dialog
+  [header]="detail()?.businessName || 'Store'"
+  [visible]="detailOpen()"
+  (visibleChange)="detailOpen.set($event)"
+  [modal]="true"
+  [style]="{ width: '34rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  @if (loadingDetail()) {
+    <bb-state-block [loading]="true" loadingText="Loading the store…" />
+  } @else if (detail(); as v) {
+    <div class="bb-detail-tags">
+      <p-tag [value]="humanise(v.status)" [severity]="toneFor(v.status)" />
+      @if (v.ratingCount) { <p-tag [value]="v.ratingAvg + ' ★ (' + v.ratingCount + ')'" severity="secondary" /> }
+    </div>
+
+    <dl>
+      <div><dt>Legal name</dt><dd>{{ v.legalName || '—' }}</dd></div>
+      <div><dt>Email</dt><dd>{{ v.email }}</dd></div>
+      <div><dt>Phone</dt><dd>{{ v.phone }}</dd></div>
+      <div><dt>Commission</dt><dd>{{ v.commissionPercent }}%</dd></div>
+      <div>
+        <dt>Minimum order</dt>
+        <dd class="bb-money">@if (v.minOrderAmount !== null) { {{ v.minOrderAmount | money }} } @else { none }</dd>
+      </div>
+      <div>
+        <dt>Delivery radius</dt>
+        <dd>@if (v.deliveryRadiusKm !== null) { {{ v.deliveryRadiusKm }} km } @else { — }</dd>
+      </div>
+      <div><dt>Applied</dt><dd>{{ v.createdAt | date: 'd MMM y' }}</dd></div>
+    </dl>
+
+    @if (v.description) {
+      <p-divider />
+      <h3>About</h3>
+      <p class="bb-note">{{ v.description }}</p>
+    }
+
+    @if (v.licenses?.length) {
+      <p-divider />
+      <h3>Licences</h3>
+      <ul class="bb-item-list">
+        @for (l of v.licenses; track l.id) {
+          <li>
+            <div>
+              <strong>{{ l.licenseNumber }}</strong>
+              <span>{{ l.licenseType }} · {{ l.regionCode }} · to {{ l.validUntil | date: 'd MMM y' }}</span>
+            </div>
+            <p-tag [value]="humanise(l.status)" [severity]="toneFor(l.status)" />
+          </li>
+        }
+      </ul>
+    }
+
+    @if (v.addresses?.length) {
+      <p-divider />
+      <h3>Addresses</h3>
+      @for (a of v.addresses; track a.id) {
+        <address>
+          <span>{{ a.addressLine1 }}</span>
+          @if (a.addressLine2) { <span>{{ a.addressLine2 }}</span> }
+          <span>{{ a.city }}, {{ a.state }} {{ a.postalCode }}</span>
+          @if (a.regionCode) { <em>Region {{ a.regionCode }}</em> }
+        </address>
+      }
+    }
+  }
+</p-dialog>
+
+<!-- Store decision -->
+<p-dialog
+  [header]="humanise(reviewStatus) + ' ' + (reviewTarget?.businessName || 'store')"
+  [visible]="reviewOpen()"
+  (visibleChange)="reviewOpen.set($event)"
+  [modal]="true"
+  [style]="{ width: '28rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  @if (reviewStatus === 'APPROVED') {
+    <p class="bb-dialog-lead">
+      Approving lets this store list products and take orders. It will still be refused at checkout
+      in any region where it holds no valid licence.
+    </p>
+
+    <div class="bb-field">
+      <span>Commission %</span>
+      <p-inputnumber
+        [(ngModel)]="commissionPercent"
+        [min]="0"
+        [max]="100"
+        [maxFractionDigits]="2"
+        styleClass="w-full"
+        inputStyleClass="w-full"
+      />
+    </div>
+  } @else {
+    <p class="bb-dialog-lead">
+      The store owner sees this reason. Be specific enough that they can act on it.
+    </p>
+  }
+
+  <div class="bb-field">
+    <span>
+      Reason
+      @if (reviewNeedsReason) { <em>(required)</em> } @else { <em>(optional)</em> }
+    </span>
+    <textarea pTextarea rows="3" [(ngModel)]="reviewReason" maxlength="500"></textarea>
+  </div>
+
+  <div class="bb-dialog-actions">
+    <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="reviewOpen.set(false)" />
+    <p-button
+      [label]="humanise(reviewStatus)"
+      icon="pi pi-check"
+      [severity]="reviewStatus === 'APPROVED' ? 'primary' : 'danger'"
+      [disabled]="reviewNeedsReason && reviewReason.trim().length < 3"
+      [loading]="reviewing()"
+      (onClick)="confirmReview()"
+    />
+  </div>
+</p-dialog>
+
+<!-- Licence decision -->
+<p-dialog
+  [header]="humanise(licenceStatus) + ' licence'"
+  [visible]="licenceOpen()"
+  (visibleChange)="licenceOpen.set($event)"
+  [modal]="true"
+  [style]="{ width: '28rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  @if (licenceTarget; as l) {
+    <dl>
+      <div><dt>Number</dt><dd>{{ l.licenseNumber }}</dd></div>
+      <div><dt>Type</dt><dd>{{ l.licenseType }}</dd></div>
+      <div><dt>Authority</dt><dd>{{ l.issuingAuthority }}</dd></div>
+      <div><dt>Region</dt><dd>{{ l.regionCode }}</dd></div>
+      <div>
+        <dt>Valid</dt>
+        <dd>{{ l.validFrom | date: 'd MMM y' }} – {{ l.validUntil | date: 'd MMM y' }}</dd>
+      </div>
+    </dl>
+
+    @if (l.documentUrl) {
+      <a [href]="l.documentUrl" target="_blank" rel="noopener" class="bb-doc-link">
+        <i class="pi pi-external-link"></i> Open the scanned document
+      </a>
+    }
+
+    <p-divider />
+
+    <div class="bb-field">
+      <span>
+        Reason
+        @if (licenceStatus === 'REJECTED') { <em>(required)</em> } @else { <em>(optional)</em> }
+      </span>
+      <textarea pTextarea rows="3" [(ngModel)]="licenceReason" maxlength="500"></textarea>
+    </div>
+
+    <div class="bb-dialog-actions">
+      <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="licenceOpen.set(false)" />
+      <p-button
+        [label]="humanise(licenceStatus)"
+        icon="pi pi-check"
+        [severity]="licenceStatus === 'APPROVED' ? 'primary' : 'danger'"
+        [disabled]="licenceStatus === 'REJECTED' && licenceReason.trim().length < 3"
+        [loading]="reviewingLicence()"
+        (onClick)="confirmLicence()"
+      />
+    </div>
+  }
+</p-dialog>

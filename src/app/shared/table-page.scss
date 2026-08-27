@@ -1,0 +1,290 @@
+/**
+ * Shared look for the back-office screens — vendor and admin.
+ *
+ * Included through `styleUrls` rather than pulled into the global sheet so the
+ * rules stay scoped to the components that opt in, and a storefront change can
+ * never be broken by an admin tweak.
+ */
+
+.bb-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.7rem;
+  margin-bottom: 1.1rem;
+}
+
+.bb-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.8rem 1rem;
+  background: #fff;
+
+  span {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--bb-muted);
+  }
+
+  strong {
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+
+  &.is-alert strong {
+    color: #dc2626;
+  }
+}
+
+.bb-link-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--bb-honey);
+  font-size: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &.is-danger {
+    color: #dc2626;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.bb-right {
+  text-align: right;
+}
+
+.bb-nowrap {
+  white-space: nowrap;
+}
+
+.bb-items-cell {
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bb-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  justify-content: flex-end;
+}
+
+:host ::ng-deep .bb-table {
+  font-size: 0.86rem;
+
+  th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+}
+
+/* --------------------------------- dialogs ------------------------------- */
+
+.bb-detail-tags {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bb-muted);
+}
+
+.bb-item-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid var(--bb-line);
+
+    &:last-child {
+      border-bottom: 0;
+    }
+
+    > div:first-child {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    strong {
+      font-size: 0.87rem;
+    }
+
+    span {
+      font-size: 0.76rem;
+      color: var(--bb-muted);
+    }
+  }
+}
+
+.bb-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+dl {
+  margin: 0;
+
+  > div {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.22rem 0;
+    font-size: 0.86rem;
+
+    &.is-total {
+      margin-top: 0.3rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--bb-line);
+      font-size: 0.98rem;
+
+      dt {
+        color: var(--bb-ink);
+        font-weight: 600;
+      }
+
+      dd {
+        font-weight: 700;
+      }
+    }
+  }
+
+  dt {
+    color: var(--bb-muted);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+address {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-style: normal;
+  font-size: 0.85rem;
+  color: #44403c;
+
+  strong {
+    color: var(--bb-ink);
+  }
+
+  em {
+    font-style: normal;
+    font-size: 0.76rem;
+    color: var(--bb-muted);
+    margin-top: 0.2rem;
+  }
+}
+
+.bb-note {
+  margin: 0;
+  font-size: 0.86rem;
+  color: #44403c;
+}
+
+.bb-dialog-lead {
+  margin: 0 0 0.85rem;
+  font-size: 0.86rem;
+  color: #44403c;
+}
+
+.bb-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+/* ---------------------------------- forms -------------------------------- */
+
+.bb-field {
+  display: block;
+  margin-bottom: 0.9rem;
+
+  > span {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+  }
+
+  em {
+    font-style: normal;
+    font-weight: 400;
+    color: var(--bb-muted);
+  }
+
+  input[pInputText],
+  textarea {
+    width: 100%;
+  }
+
+  &.bb-inline {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+
+    label {
+      font-size: 0.88rem;
+      cursor: pointer;
+    }
+  }
+}
+
+.bb-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 0.85rem;
+}
+
+.bb-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0 0.75rem;
+}
+
+.bb-error {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #dc2626;
+}
+
+@media (max-width: 640px) {
+  .bb-grid-2,
+  .bb-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}

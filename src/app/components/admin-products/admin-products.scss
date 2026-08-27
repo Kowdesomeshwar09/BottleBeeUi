@@ -1,0 +1,55 @@
+.bb-ap-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
+}
+
+.bb-ap-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+:host ::ng-deep .bb-filter {
+  min-width: 12rem;
+}
+
+.bb-sub {
+  font-size: 0.74rem;
+  color: var(--bb-muted);
+
+  &.is-danger {
+    color: #b91c1c;
+  }
+}
+
+.bb-odd {
+  color: #b45309;
+  font-weight: 700;
+}
+
+.bb-odd-icon {
+  margin-left: 0.3rem;
+  font-size: 0.78rem;
+  color: #b45309;
+}
+
+.bb-image-strip {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.35rem;
+
+  img {
+    height: 7rem;
+    border: 1px solid var(--bb-line);
+    border-radius: 8px;
+    object-fit: contain;
+    background: #fff;
+    flex-shrink: 0;
+  }
+}

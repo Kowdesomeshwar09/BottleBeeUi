@@ -1,0 +1,248 @@
+<div class="bb-page">
+  <header class="bb-ao-head">
+    <div>
+      <h1 class="bb-page-title">All orders</h1>
+      <p class="bb-page-subtitle">
+        Every order across every store. Riders are assigned from here.
+      </p>
+    </div>
+
+    <div class="bb-ao-tools">
+      <p-iconfield>
+        <p-inputicon styleClass="pi pi-search" />
+        <input
+          pInputText
+          type="search"
+          [ngModel]="search"
+          (ngModelChange)="onSearch($event)"
+          placeholder="Search by order number"
+          aria-label="Search orders"
+        />
+      </p-iconfield>
+
+      <p-select
+        [(ngModel)]="filter"
+        [options]="filters"
+        optionLabel="label"
+        optionValue="value"
+        (onChange)="onFilter()"
+        styleClass="bb-filter"
+        ariaLabel="Filter by status"
+      />
+    </div>
+  </header>
+
+  @if (loading() || error()) {
+    <bb-state-block [loading]="loading()" [error]="error()" loadingText="Loading orders…" (retry)="load()" />
+  } @else if (!orders().length) {
+    <bb-state-block
+      [empty]="true"
+      emptyIcon="pi-receipt"
+      emptyTitle="Nothing here"
+      [emptyText]="filter === 'READY_FOR_PICKUP' ? 'No orders are waiting for a rider.' : 'Nothing matches that filter.'"
+    />
+  } @else {
+    <div class="bb-card">
+      <p-table
+        [value]="orders()"
+        [lazy]="true"
+        [paginator]="true"
+        [rows]="rows"
+        [first]="first"
+        [totalRecords]="total()"
+        [rowsPerPageOptions]="[25, 50, 100]"
+        (onPage)="onPage($event)"
+        styleClass="bb-table"
+        [tableStyle]="{ 'min-width': '62rem' }"
+      >
+        <ng-template #header>
+          <tr>
+            <th>Order</th>
+            <th>Store</th>
+            <th>Customer</th>
+            <th>Items</th>
+            <th>Region</th>
+            <th>Placed</th>
+            <th>Status</th>
+            <th>Delivery</th>
+            <th class="bb-right">Total</th>
+            <th class="bb-right">Dispatch</th>
+          </tr>
+        </ng-template>
+
+        <ng-template #body let-order>
+          <tr>
+            <td>
+              <button type="button" class="bb-link-btn" (click)="openDetail(order)">
+                {{ order.orderNumber }}
+              </button>
+            </td>
+            <td>{{ order.vendor?.businessName || '—' }}</td>
+            <td>
+              @if (order.customer) {
+                <div>{{ order.customer.legalName || '—' }}</div>
+                @if (order.customer.phone) { <div class="bb-sub">{{ order.customer.phone }}</div> }
+              } @else { — }
+            </td>
+            <td class="bb-items-cell">{{ itemSummary(order) }}</td>
+            <td>{{ order.regionCode }}</td>
+            <td class="bb-nowrap">{{ order.createdAt | date: 'd MMM, h:mm a' }}</td>
+            <td><p-tag [value]="humanise(order.status)" [severity]="toneFor(order.status, 'order')" /></td>
+            <td>
+              <p-tag
+                [value]="humanise(order.deliveryStatus)"
+                [severity]="toneFor(order.deliveryStatus, 'delivery')"
+              />
+            </td>
+            <td class="bb-right bb-money">{{ order.grandTotal | money }}</td>
+            <td class="bb-right">
+              <div class="bb-row-actions">
+                @if (needsRider(order)) {
+                  <p-button
+                    label="Assign rider"
+                    icon="pi pi-user-plus"
+                    size="small"
+                    (onClick)="askAssign(order)"
+                  />
+                } @else {
+                  <p-button
+                    icon="pi pi-eye"
+                    severity="secondary"
+                    [text]="true"
+                    size="small"
+                    pTooltip="Open the order"
+                    (onClick)="openDetail(order)"
+                  />
+                }
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  }
+</div>
+
+<!-- Detail -->
+<p-dialog
+  [header]="detail()?.orderNumber || 'Order'"
+  [visible]="detailOpen()"
+  (visibleChange)="detailOpen.set($event)"
+  [modal]="true"
+  [style]="{ width: '36rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  @if (loadingDetail()) {
+    <bb-state-block [loading]="true" loadingText="Loading the order…" />
+  } @else if (detail(); as d) {
+    <div class="bb-detail-tags">
+      <p-tag [value]="humanise(d.status)" [severity]="toneFor(d.status, 'order')" />
+      <p-tag [value]="humanise(d.paymentStatus)" [severity]="toneFor(d.paymentStatus, 'payment')" />
+      <p-tag [value]="humanise(d.deliveryStatus)" [severity]="toneFor(d.deliveryStatus, 'delivery')" />
+    </div>
+
+    <dl>
+      <div><dt>Store</dt><dd>{{ d.vendor?.businessName || '—' }}</dd></div>
+      <div><dt>Customer</dt><dd>{{ d.customer?.legalName || '—' }}</dd></div>
+      @if (d.customer?.email; as email) { <div><dt>Email</dt><dd>{{ email }}</dd></div> }
+      <div><dt>Region</dt><dd>{{ d.regionCode }}</dd></div>
+      <div><dt>Placed</dt><dd>{{ d.createdAt | date: 'd MMM y, h:mm a' }}</dd></div>
+      @if (d.cancellationReason) {
+        <div><dt>Cancelled because</dt><dd>{{ d.cancellationReason }}</dd></div>
+      }
+    </dl>
+
+    <p-divider />
+
+    <h3>Items</h3>
+    <ul class="bb-item-list">
+      @for (item of d.items; track item.id) {
+        <li>
+          <div>
+            <strong>{{ item.productName }}</strong>
+            <span>{{ item.variantLabel || item.sku }}</span>
+          </div>
+          <div class="bb-item-right">
+            <span>{{ item.quantity }} × {{ item.unitPrice | money }}</span>
+            <strong class="bb-money">{{ item.lineTotal | money }}</strong>
+          </div>
+        </li>
+      }
+    </ul>
+
+    <p-divider />
+
+    <dl>
+      <div><dt>Subtotal</dt><dd class="bb-money">{{ d.subtotal | money }}</dd></div>
+      @if (d.discountTotal > 0) {
+        <div><dt>Discount</dt><dd class="bb-money">−{{ d.discountTotal | money }}</dd></div>
+      }
+      <div><dt>Tax</dt><dd class="bb-money">{{ d.taxTotal | money }}</dd></div>
+      <div><dt>Delivery</dt><dd class="bb-money">{{ d.deliveryFee | money }}</dd></div>
+      <div class="is-total"><dt>Total</dt><dd class="bb-money">{{ d.grandTotal | money }}</dd></div>
+    </dl>
+
+    @if (d.deliveryAddress; as address) {
+      <p-divider />
+      <h3>Delivering to</h3>
+      <address>
+        <strong>{{ address.recipientName }}</strong>
+        @if (address.phone) { <span>{{ address.phone }}</span> }
+        <span>{{ address.addressLine1 }}</span>
+        @if (address.addressLine2) { <span>{{ address.addressLine2 }}</span> }
+        <span>{{ address.city }}, {{ address.state }} {{ address.postalCode }}</span>
+      </address>
+    }
+  }
+</p-dialog>
+
+<!-- Assign -->
+<p-dialog
+  header="Assign a delivery partner"
+  [visible]="assignOpen()"
+  (visibleChange)="assignOpen.set($event)"
+  [modal]="true"
+  [style]="{ width: '28rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  @if (assignTarget; as order) {
+    <p class="bb-dialog-lead">
+      {{ order.orderNumber }} is packed and waiting at
+      {{ order.vendor?.businessName || 'the store' }}. The partner can accept or decline; only
+      partners with an approved licence and an active account are listed.
+    </p>
+
+    @if (!assignablePartners().length) {
+      <p-message
+        severity="warn"
+        text="No active delivery partners are available. Approve a partner's details before assigning work."
+        styleClass="w-full mb-3"
+      />
+    } @else {
+      <div class="bb-field">
+        <span>Delivery partner</span>
+        <p-select
+          [(ngModel)]="selectedPartnerId"
+          [options]="assignablePartners()"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Choose a partner"
+          [filter]="true"
+          filterBy="label"
+          styleClass="w-full"
+        />
+      </div>
+    }
+
+    <div class="bb-dialog-actions">
+      <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="assignOpen.set(false)" />
+      <p-button
+        label="Assign"
+        icon="pi pi-check"
+        [disabled]="!selectedPartnerId"
+        [loading]="assigning()"
+        (onClick)="confirmAssign()"
+      />
+    </div>
+  }
+</p-dialog>

@@ -1,0 +1,244 @@
+<div class="bb-page">
+  <header class="bb-av-head">
+    <div>
+      <h1 class="bb-page-title">Age verification</h1>
+      <p class="bb-page-subtitle">
+        Each pending submission is a customer who cannot order until it is reviewed. Every decision
+        is recorded against your account.
+      </p>
+    </div>
+
+    <p-select
+      [(ngModel)]="filter"
+      [options]="filters"
+      optionLabel="label"
+      optionValue="value"
+      (onChange)="onFilter()"
+      styleClass="bb-filter"
+      ariaLabel="Filter by status"
+    />
+  </header>
+
+  @if (loading() || error()) {
+    <bb-state-block [loading]="loading()" [error]="error()" loadingText="Loading the queue…" (retry)="load()" />
+  } @else if (!rowsData().length) {
+    <bb-state-block
+      [empty]="true"
+      emptyIcon="pi-check-circle"
+      emptyTitle="Queue is clear"
+      [emptyText]="filter === 'PENDING' ? 'Nothing waiting to be reviewed.' : 'Nothing matches that filter.'"
+    />
+  } @else {
+    <div class="bb-card">
+      <p-table
+        [value]="rowsData()"
+        [lazy]="true"
+        [paginator]="true"
+        [rows]="rows"
+        [first]="first"
+        [totalRecords]="total()"
+        [rowsPerPageOptions]="[25, 50, 100]"
+        (onPage)="onPage($event)"
+        styleClass="bb-table"
+        [tableStyle]="{ 'min-width': '52rem' }"
+      >
+        <ng-template #header>
+          <tr>
+            <th>Customer</th>
+            <th>Document</th>
+            <th>Date of birth</th>
+            <th class="bb-right">Age</th>
+            <th>Submitted</th>
+            <th>Status</th>
+            <th class="bb-right">Decision</th>
+          </tr>
+        </ng-template>
+
+        <ng-template #body let-row>
+          <tr>
+            <td>
+              <button type="button" class="bb-link-btn" (click)="openDetail(row)">
+                {{ nameOf(row) }}
+              </button>
+              @if (row.user?.email) { <div class="bb-sub">{{ row.user.email }}</div> }
+            </td>
+            <td>{{ humanise(row.documentType) }}</td>
+            <td class="bb-nowrap">{{ row.dateOfBirth | date: 'd MMM y' }}</td>
+            <td class="bb-right">
+              @if (ageOf(row.dateOfBirth) !== null) {
+                <strong [class.bb-underage]="isUnderage(row.dateOfBirth)">
+                  {{ ageOf(row.dateOfBirth) }}
+                </strong>
+                @if (isUnderage(row.dateOfBirth)) {
+                  <p-tag value="Under 21" severity="danger" styleClass="ml-2" />
+                }
+              } @else { — }
+            </td>
+            <td class="bb-nowrap">{{ row.createdAt | date: 'd MMM, h:mm a' }}</td>
+            <td><p-tag [value]="humanise(row.status)" [severity]="toneFor(row.status)" /></td>
+            <td class="bb-right">
+              <div class="bb-row-actions">
+                @if (row.status === 'PENDING') {
+                  <p-button
+                    label="Review"
+                    icon="pi pi-eye"
+                    size="small"
+                    (onClick)="openDetail(row)"
+                  />
+                } @else if (row.rejectionReason) {
+                  <span class="bb-sub is-danger">{{ row.rejectionReason }}</span>
+                }
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  }
+</div>
+
+<!-- Review -->
+<p-dialog
+  header="Review this submission"
+  [visible]="detailOpen()"
+  (visibleChange)="detailOpen.set($event)"
+  [modal]="true"
+  [style]="{ width: '40rem', maxWidth: '96vw' }"
+  [draggable]="false"
+>
+  @if (loadingDetail()) {
+    <bb-state-block [loading]="true" loadingText="Loading the submission…" />
+  } @else if (detail(); as v) {
+    @if (isUnderage(v.dateOfBirth)) {
+      <p-message
+        severity="error"
+        [text]="'This date of birth gives an age of ' + ageOf(v.dateOfBirth) + '. Below 21 is under the legal drinking age everywhere Bottle Bee operates — do not approve unless the document itself shows otherwise.'"
+        styleClass="w-full mb-3"
+      />
+    }
+
+    <dl>
+      <div><dt>Customer</dt><dd>{{ nameOf(v) }}</dd></div>
+      @if (v.user?.email) { <div><dt>Email</dt><dd>{{ v.user.email }}</dd></div> }
+      @if (v.user?.phone) { <div><dt>Phone</dt><dd>{{ v.user.phone }}</dd></div> }
+      <div><dt>Document type</dt><dd>{{ humanise(v.documentType) }}</dd></div>
+      <div><dt>Date of birth claimed</dt><dd>{{ v.dateOfBirth | date: 'd MMM y' }}</dd></div>
+      <div>
+        <dt>Age today</dt>
+        <dd>
+          <strong [class.bb-underage]="isUnderage(v.dateOfBirth)">{{ ageOf(v.dateOfBirth) }}</strong>
+        </dd>
+      </div>
+      <div><dt>Submitted</dt><dd>{{ v.createdAt | date: 'd MMM y, h:mm a' }}</dd></div>
+      <div><dt>Status</dt><dd><p-tag [value]="humanise(v.status)" [severity]="toneFor(v.status)" /></dd></div>
+    </dl>
+
+    <p-divider />
+
+    <h3>The document</h3>
+    <p class="bb-doc-note">
+      Check that the name and date of birth on the document match what is claimed above, and that
+      the document itself looks genuine and unexpired.
+    </p>
+
+    <div class="bb-docs">
+      @if (v.documentFrontUrl) {
+        <figure>
+          <img [src]="v.documentFrontUrl" alt="Front of the submitted document" />
+          <figcaption>
+            Front ·
+            <a [href]="v.documentFrontUrl" target="_blank" rel="noopener">open full size</a>
+          </figcaption>
+        </figure>
+      }
+      @if (v.documentBackUrl) {
+        <figure>
+          <img [src]="v.documentBackUrl" alt="Back of the submitted document" />
+          <figcaption>
+            Back ·
+            <a [href]="v.documentBackUrl" target="_blank" rel="noopener">open full size</a>
+          </figcaption>
+        </figure>
+      }
+      @if (v.selfieUrl) {
+        <figure>
+          <img [src]="v.selfieUrl" alt="Submitted selfie" />
+          <figcaption>
+            Selfie ·
+            <a [href]="v.selfieUrl" target="_blank" rel="noopener">open full size</a>
+          </figcaption>
+        </figure>
+      }
+      @if (!v.documentFrontUrl && !v.documentBackUrl && !v.selfieUrl) {
+        <p class="bb-sub">No document images were uploaded with this submission.</p>
+      }
+    </div>
+
+    @if (v.rejectionReason) {
+      <p-message severity="warn" [text]="'Previously rejected: ' + v.rejectionReason" styleClass="w-full mt-3" />
+    }
+
+    @if (v.status === 'PENDING') {
+      <div class="bb-dialog-actions">
+        <p-button
+          label="Reject"
+          icon="pi pi-times"
+          severity="danger"
+          [outlined]="true"
+          (onClick)="askDecision(v, 'REJECTED')"
+        />
+        <p-button label="Approve" icon="pi pi-check" (onClick)="askDecision(v, 'APPROVED')" />
+      </div>
+    }
+  }
+</p-dialog>
+
+<!-- Decision -->
+<p-dialog
+  [header]="humanise(decisionStatus) + ' this verification'"
+  [visible]="decisionOpen()"
+  (visibleChange)="decisionOpen.set($event)"
+  [modal]="true"
+  [style]="{ width: '28rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  @if (decisionStatus === 'APPROVED') {
+    <p class="bb-dialog-lead">
+      The customer will be able to place orders immediately. This approval is recorded against your
+      account in the audit log.
+    </p>
+
+    @if (isUnderage(decisionTarget?.dateOfBirth)) {
+      <p-message
+        severity="error"
+        text="This submission shows an age below 21. Approving it will let an underage customer order."
+        styleClass="w-full mb-3"
+      />
+    }
+  } @else {
+    <p class="bb-dialog-lead">
+      The customer sees this reason and can submit again. Say what was wrong — a blurred photo and a
+      mismatched name need different fixes.
+    </p>
+  }
+
+  <div class="bb-field">
+    <span>
+      Reason
+      @if (decisionStatus === 'REJECTED') { <em>(required)</em> } @else { <em>(optional)</em> }
+    </span>
+    <textarea pTextarea rows="3" [(ngModel)]="decisionReason" maxlength="500"></textarea>
+  </div>
+
+  <div class="bb-dialog-actions">
+    <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="decisionOpen.set(false)" />
+    <p-button
+      [label]="humanise(decisionStatus)"
+      icon="pi pi-check"
+      [severity]="decisionStatus === 'APPROVED' ? 'primary' : 'danger'"
+      [disabled]="decisionStatus === 'REJECTED' && decisionReason.trim().length < 3"
+      [loading]="deciding()"
+      (onClick)="confirmDecision()"
+    />
+  </div>
+</p-dialog>

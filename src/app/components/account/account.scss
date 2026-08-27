@@ -1,0 +1,228 @@
+.bb-eligibility {
+  padding: 1rem 1.1rem;
+  margin-bottom: 1rem;
+  background: #fff;
+  border-color: #fca5a5;
+
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0 0 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+
+    i {
+      color: #dc2626;
+    }
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 1.1rem;
+  }
+
+  li {
+    font-size: 0.86rem;
+    color: #7f1d1d;
+    margin-bottom: 0.25rem;
+  }
+}
+
+.bb-panel {
+  padding: 1.25rem;
+  background: #fff;
+  margin-top: 0.85rem;
+
+  h2 {
+    margin: 0 0 0.35rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+}
+
+.bb-panel-lead {
+  margin: 0 0 1.25rem;
+  font-size: 0.85rem;
+  color: var(--bb-muted);
+  max-width: 46rem;
+}
+
+.bb-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+
+  .bb-panel-lead {
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* --------------------------------- fields -------------------------------- */
+
+.bb-field {
+  display: block;
+  margin-bottom: 1rem;
+
+  > span {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+  }
+
+  em {
+    font-style: normal;
+    font-weight: 400;
+    color: var(--bb-muted);
+  }
+
+  input[pInputText] {
+    width: 100%;
+  }
+
+  &.bb-inline {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+
+    label {
+      font-size: 0.88rem;
+      cursor: pointer;
+    }
+  }
+}
+
+.bb-file {
+  display: block;
+  width: 100%;
+  font-size: 0.82rem;
+  padding: 0.45rem;
+  border: 1px dashed var(--bb-line);
+  border-radius: 8px;
+  background: #fafaf9;
+  cursor: pointer;
+}
+
+.bb-error {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #dc2626;
+}
+
+.bb-ok {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #15803d;
+}
+
+.bb-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 0.85rem;
+}
+
+.bb-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0 0.75rem;
+}
+
+/* -------------------------------- addresses ------------------------------ */
+
+.bb-address-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.bb-address-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--bb-line);
+  border-radius: 10px;
+
+  &.is-default {
+    border-color: var(--bb-honey);
+    background: #fffdf7;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  address {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    font-style: normal;
+    font-size: 0.82rem;
+    color: #44403c;
+
+    em {
+      font-style: normal;
+      font-size: 0.72rem;
+      color: var(--bb-muted);
+      margin-top: 0.2rem;
+    }
+  }
+
+  footer {
+    display: flex;
+    gap: 0.85rem;
+    margin-top: auto;
+    padding-top: 0.35rem;
+  }
+}
+
+.bb-link-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--bb-honey);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &.is-danger {
+    color: #dc2626;
+  }
+}
+
+/* ----------------------------------- kyc --------------------------------- */
+
+.bb-kyc-status {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.85rem;
+
+  span {
+    font-size: 0.85rem;
+    color: var(--bb-muted);
+  }
+}
+
+.bb-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .bb-grid-2,
+  .bb-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}

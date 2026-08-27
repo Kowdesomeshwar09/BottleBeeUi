@@ -1,0 +1,41 @@
+.bb-vp-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
+}
+
+.bb-vp-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+:host ::ng-deep .bb-vp-filter {
+  min-width: 11rem;
+}
+
+.bb-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+
+  span {
+    font-size: 0.76rem;
+    color: var(--bb-muted);
+  }
+
+  em {
+    font-style: normal;
+    font-size: 0.74rem;
+    color: #b91c1c;
+  }
+}
+
+.bb-zero {
+  color: #dc2626;
+  font-weight: 700;
+}

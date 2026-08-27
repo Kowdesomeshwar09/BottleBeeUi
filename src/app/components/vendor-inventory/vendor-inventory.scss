@@ -1,0 +1,112 @@
+.bb-vi-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
+}
+
+.bb-vi-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.bb-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+
+  span {
+    font-size: 0.76rem;
+    color: var(--bb-muted);
+  }
+}
+
+.bb-zero {
+  color: #dc2626;
+}
+
+:host ::ng-deep tr.bb-row-low > td {
+  background: #fffbeb;
+}
+
+.bb-current {
+  > div {
+    align-items: center;
+  }
+
+  strong {
+    font-size: 1.15rem;
+  }
+}
+
+.bb-hint {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.76rem;
+  color: var(--bb-muted);
+}
+
+.bb-ledger {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--bb-line);
+
+    &:last-child {
+      border-bottom: 0;
+    }
+
+    > div:first-child {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+      min-width: 0;
+    }
+
+    strong {
+      font-size: 0.87rem;
+    }
+
+    span {
+      font-size: 0.75rem;
+      color: var(--bb-muted);
+    }
+
+    em {
+      font-style: normal;
+      font-size: 0.8rem;
+      color: #44403c;
+    }
+  }
+}
+
+.bb-ledger-qty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+
+  strong {
+    font-size: 1rem;
+
+    &.is-in {
+      color: #15803d;
+    }
+
+    &.is-out {
+      color: #dc2626;
+    }
+  }
+}

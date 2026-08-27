@@ -1,0 +1,376 @@
+<div class="bb-page">
+  <h1 class="bb-page-title">Your account</h1>
+  <p class="bb-page-subtitle">
+    @if (user) { {{ user.firstName }} · {{ user.email }} }
+  </p>
+
+  @if (loading() || error()) {
+    <bb-state-block [loading]="loading()" [error]="error()" loadingText="Loading your account…" (retry)="load()" />
+  } @else {
+    <!-- Can this account order at all? -->
+    @if (eligibility(); as e) {
+      @if (e.eligible) {
+        <p-message
+          severity="success"
+          text="Your account is verified and can place orders."
+          styleClass="w-full mb-3"
+        />
+      } @else {
+        <div class="bb-card bb-eligibility">
+          <h2><i class="pi pi-exclamation-circle"></i> Before you can order</h2>
+          <ul>
+            @for (reason of e.reasons; track $index) {
+              <li>{{ reasonText(reason) }}</li>
+            }
+          </ul>
+        </div>
+      }
+    }
+
+    <p-tabs value="profile">
+      <p-tablist>
+        <p-tab value="profile"><i class="pi pi-user"></i> Profile</p-tab>
+        <p-tab value="addresses"><i class="pi pi-map-marker"></i> Addresses</p-tab>
+        <p-tab value="id"><i class="pi pi-id-card"></i> ID verification</p-tab>
+      </p-tablist>
+
+      <p-tabpanels>
+        <!-- ------------------------------- profile ------------------------- -->
+        <p-tabpanel value="profile">
+          <div class="bb-card bb-panel">
+            <h2>Your legal details</h2>
+            <p class="bb-panel-lead">
+              These must match the photo ID you will show at delivery. The delivery partner checks
+              the name and date of birth against it before handing an order over.
+            </p>
+
+            <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" novalidate>
+              <div class="bb-grid-2">
+                <label class="bb-field">
+                  <span>Legal first name</span>
+                  <input pInputText formControlName="legalFirstName" />
+                  @if (invalidIn('profileForm', 'legalFirstName')) {
+                    <small class="bb-error">Required, as printed on your ID.</small>
+                  }
+                </label>
+
+                <label class="bb-field">
+                  <span>Legal last name</span>
+                  <input pInputText formControlName="legalLastName" />
+                  @if (invalidIn('profileForm', 'legalLastName')) {
+                    <small class="bb-error">Required, as printed on your ID.</small>
+                  }
+                </label>
+              </div>
+
+              <div class="bb-grid-2">
+                <div class="bb-field">
+                  <span>Date of birth</span>
+                  <p-datepicker
+                    formControlName="dateOfBirth"
+                    dateFormat="dd M yy"
+                    [maxDate]="maxDob"
+                    [minDate]="minDob"
+                    [showIcon]="true"
+                    styleClass="w-full"
+                    inputStyleClass="w-full"
+                  />
+                  @if (invalidIn('profileForm', 'dateOfBirth')) {
+                    <small class="bb-error">We need your date of birth.</small>
+                  }
+                </div>
+
+                <div class="bb-field">
+                  <span>Gender <em>(optional)</em></span>
+                  <p-select
+                    formControlName="gender"
+                    [options]="genders"
+                    optionLabel="label"
+                    optionValue="value"
+                    styleClass="w-full"
+                  />
+                </div>
+              </div>
+
+              <div class="bb-field bb-inline">
+                <p-checkbox formControlName="marketingOptIn" [binary]="true" inputId="marketing" />
+                <label for="marketing">Email me about offers from stores near me</label>
+              </div>
+
+              <p-button
+                type="submit"
+                label="Save profile"
+                icon="pi pi-check"
+                [loading]="savingProfile()"
+              />
+            </form>
+          </div>
+        </p-tabpanel>
+
+        <!-- ------------------------------ addresses ------------------------ -->
+        <p-tabpanel value="addresses">
+          <div class="bb-card bb-panel">
+            <header class="bb-panel-head">
+              <div>
+                <h2>Delivery addresses</h2>
+                <p class="bb-panel-lead">
+                  The address decides which state's rules apply — minimum age, dry days and
+                  permitted sale hours all vary.
+                </p>
+              </div>
+              <p-button label="Add address" icon="pi pi-plus" (onClick)="openAddressDialog()" />
+            </header>
+
+            @if (!addresses().length) {
+              <bb-state-block
+                [empty]="true"
+                emptyIcon="pi-map-marker"
+                emptyTitle="No addresses saved"
+                emptyText="Add one so we know where to deliver."
+              />
+            } @else {
+              <div class="bb-address-grid">
+                @for (address of addresses(); track address.id) {
+                  <article class="bb-address-card" [class.is-default]="address.isDefault">
+                    <header>
+                      <strong>{{ address.label || 'Address' }}</strong>
+                      @if (address.isDefault) { <p-tag value="Default" severity="warn" /> }
+                    </header>
+
+                    <address>
+                      <span>{{ address.recipientName }} · {{ address.phone }}</span>
+                      <span>{{ address.addressLine1 }}</span>
+                      @if (address.addressLine2) { <span>{{ address.addressLine2 }}</span> }
+                      <span>{{ address.city }}, {{ address.state }} {{ address.postalCode }}</span>
+                      @if (address.regionCode) { <em>Region {{ address.regionCode }}</em> }
+                    </address>
+
+                    <footer>
+                      <button type="button" class="bb-link-btn" (click)="openAddressDialog(address)">
+                        Edit
+                      </button>
+                      @if (!address.isDefault) {
+                        <button type="button" class="bb-link-btn" (click)="setDefault(address)">
+                          Make default
+                        </button>
+                      }
+                      <button
+                        type="button"
+                        class="bb-link-btn is-danger"
+                        (click)="deleteAddress(address, $event)"
+                      >
+                        Remove
+                      </button>
+                    </footer>
+                  </article>
+                }
+              </div>
+            }
+          </div>
+        </p-tabpanel>
+
+        <!-- --------------------------- ID verification --------------------- -->
+        <p-tabpanel value="id">
+          <div class="bb-card bb-panel">
+            <h2>ID verification</h2>
+
+            @if (verification(); as v) {
+              <div class="bb-kyc-status">
+                <p-tag [value]="humanise(v.status)" [severity]="toneFor(v.status)" />
+                <span>
+                  {{ humanise(v.documentType) }}
+                  @if (v.documentLast4) { ending {{ v.documentLast4 }} }
+                </span>
+              </div>
+
+              @if (v.status === 'PENDING') {
+                <p-message
+                  severity="info"
+                  text="Submitted. A reviewer usually gets to this within a day."
+                  styleClass="w-full mb-3"
+                />
+              }
+              @if (v.status === 'APPROVED') {
+                <p-message severity="success" text="Verified. You can place orders." styleClass="w-full mb-3" />
+              }
+              @if (v.status === 'REJECTED' && v.rejectionReason) {
+                <p-message
+                  severity="error"
+                  [text]="'Rejected: ' + v.rejectionReason"
+                  styleClass="w-full mb-3"
+                />
+              }
+            } @else {
+              <p-message
+                severity="warn"
+                text="You have not submitted an ID yet. Orders cannot be placed until one is approved."
+                styleClass="w-full mb-3"
+              />
+            }
+
+            @if (canSubmitKyc) {
+              <p-divider />
+
+              <p class="bb-panel-lead">
+                We store the document number only as a keyed hash, never in the clear, and the
+                images are visible only to reviewers.
+              </p>
+
+              <form [formGroup]="kycForm" (ngSubmit)="submitKyc()" novalidate>
+                <div class="bb-grid-2">
+                  <div class="bb-field">
+                    <span>Document type</span>
+                    <p-select
+                      formControlName="documentType"
+                      [options]="documentTypes"
+                      optionLabel="label"
+                      optionValue="value"
+                      styleClass="w-full"
+                    />
+                  </div>
+
+                  <label class="bb-field">
+                    <span>Document number</span>
+                    <input pInputText formControlName="documentNumber" autocomplete="off" />
+                    @if (invalidIn('kycForm', 'documentNumber')) {
+                      <small class="bb-error">Enter the number printed on the document.</small>
+                    }
+                  </label>
+                </div>
+
+                <div class="bb-field">
+                  <span>Date of birth as printed on the document</span>
+                  <p-datepicker
+                    formControlName="dateOfBirth"
+                    dateFormat="dd M yy"
+                    [maxDate]="maxDob"
+                    [minDate]="minDob"
+                    [showIcon]="true"
+                    styleClass="w-full"
+                    inputStyleClass="w-full"
+                  />
+                  @if (invalidIn('kycForm', 'dateOfBirth')) {
+                    <small class="bb-error">Required.</small>
+                  }
+                </div>
+
+                <div class="bb-grid-2">
+                  <label class="bb-field">
+                    <span>Front of document</span>
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      (change)="pickFile('front', $event)"
+                      class="bb-file"
+                    />
+                    @if (documentFront) { <small class="bb-ok">{{ documentFront.name }}</small> }
+                  </label>
+
+                  <label class="bb-field">
+                    <span>Back of document <em>(if it has one)</em></span>
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      (change)="pickFile('back', $event)"
+                      class="bb-file"
+                    />
+                    @if (documentBack) { <small class="bb-ok">{{ documentBack.name }}</small> }
+                  </label>
+                </div>
+
+                <p-button
+                  type="submit"
+                  label="Submit for review"
+                  icon="pi pi-upload"
+                  [loading]="submittingKyc()"
+                />
+              </form>
+            }
+          </div>
+        </p-tabpanel>
+      </p-tabpanels>
+    </p-tabs>
+  }
+</div>
+
+<p-dialog
+  [header]="editingAddressId() ? 'Edit address' : 'Add a delivery address'"
+  [visible]="addressDialog()"
+  (visibleChange)="addressDialog.set($event)"
+  [modal]="true"
+  [style]="{ width: '32rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  <form [formGroup]="addressForm" (ngSubmit)="saveAddress()" novalidate>
+    <label class="bb-field">
+      <span>Label</span>
+      <input pInputText formControlName="label" placeholder="Home, Office…" />
+    </label>
+
+    <div class="bb-grid-2">
+      <label class="bb-field">
+        <span>Recipient name</span>
+        <input pInputText formControlName="recipientName" />
+        @if (invalidIn('addressForm', 'recipientName')) {
+          <small class="bb-error">Who should we hand it to?</small>
+        }
+      </label>
+
+      <label class="bb-field">
+        <span>Phone</span>
+        <input pInputText formControlName="phone" placeholder="+919876543210" />
+        @if (invalidIn('addressForm', 'phone')) {
+          <small class="bb-error">Include the country code.</small>
+        }
+      </label>
+    </div>
+
+    <label class="bb-field">
+      <span>Address line 1</span>
+      <input pInputText formControlName="addressLine1" />
+      @if (invalidIn('addressForm', 'addressLine1')) {
+        <small class="bb-error">Enter the street address.</small>
+      }
+    </label>
+
+    <label class="bb-field">
+      <span>Address line 2 <em>(optional)</em></span>
+      <input pInputText formControlName="addressLine2" />
+    </label>
+
+    <div class="bb-grid-3">
+      <label class="bb-field">
+        <span>City</span>
+        <input pInputText formControlName="city" />
+        @if (invalidIn('addressForm', 'city')) { <small class="bb-error">Required.</small> }
+      </label>
+
+      <label class="bb-field">
+        <span>State</span>
+        <input pInputText formControlName="state" />
+        @if (invalidIn('addressForm', 'state')) { <small class="bb-error">Required.</small> }
+      </label>
+
+      <label class="bb-field">
+        <span>PIN code</span>
+        <input pInputText formControlName="postalCode" inputmode="numeric" maxlength="6" />
+        @if (invalidIn('addressForm', 'postalCode')) { <small class="bb-error">Six digits.</small> }
+      </label>
+    </div>
+
+    <label class="bb-field">
+      <span>Delivery instructions <em>(optional)</em></span>
+      <input pInputText formControlName="deliveryInstructions" />
+    </label>
+
+    <div class="bb-field bb-inline">
+      <p-checkbox formControlName="isDefault" [binary]="true" inputId="isDefault" />
+      <label for="isDefault">Use this as my default address</label>
+    </div>
+
+    <div class="bb-dialog-actions">
+      <p-button label="Cancel" severity="secondary" [text]="true" type="button" (onClick)="addressDialog.set(false)" />
+      <p-button label="Save address" icon="pi pi-check" type="submit" [loading]="savingAddress()" />
+    </div>
+  </form>
+</p-dialog>

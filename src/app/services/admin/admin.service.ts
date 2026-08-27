@@ -121,6 +121,24 @@ export class AdminService {
     return this.api.post(AppConfig.permissionMatrix, {});
   }
 
+  /* --------------------------------- orders ------------------------------- */
+
+  /**
+   * The same endpoint the storefront and vendors use. Staff are not scoped to a
+   * customer or a store, so this returns every order on the platform.
+   */
+  orders(payload: any = {}): Observable<ApiResponse> {
+    return this.api.post(AppConfig.orderList, payload);
+  }
+
+  orderDetail(id: number): Observable<ApiResponse> {
+    return this.api.post(AppConfig.orderDetail, { id });
+  }
+
+  updateOrderStatus(payload: { id: number; status: string; reason?: string; note?: string }): Observable<ApiResponse> {
+    return this.api.post(AppConfig.orderUpdateStatus, payload);
+  }
+
   /* -------------------------------- delivery ------------------------------ */
 
   deliveryPartners(payload: any = {}): Observable<ApiResponse> {

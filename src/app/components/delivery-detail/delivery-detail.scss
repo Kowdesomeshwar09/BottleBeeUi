@@ -1,0 +1,223 @@
+.bb-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--bb-muted);
+  margin-bottom: 0.85rem;
+
+  a:hover {
+    color: var(--bb-honey);
+  }
+}
+
+.bb-crumb-current {
+  color: var(--bb-ink);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.bb-run-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+
+  .bb-page-title {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* The ID gate. Deliberately the loudest thing on the screen. */
+.bb-gate {
+  padding: 1.15rem 1.25rem;
+  margin-bottom: 1rem;
+  background: #fffbeb;
+  border-color: var(--bb-honey);
+
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #78350f;
+
+    i {
+      font-size: 1.15rem;
+    }
+  }
+
+  p {
+    margin: 0 0 0.9rem;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: #44403c;
+  }
+}
+
+.bb-run-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 19rem;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.bb-run-main,
+.bb-run-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.bb-panel {
+  padding: 1.1rem;
+  background: #fff;
+
+  h2 {
+    margin: 0 0 0.8rem;
+    font-size: 0.98rem;
+    font-weight: 600;
+  }
+}
+
+.bb-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+
+  h2 {
+    margin: 0;
+  }
+}
+
+address {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-style: normal;
+  font-size: 0.9rem;
+  color: #44403c;
+  margin-top: 0.75rem;
+
+  strong {
+    font-size: 1rem;
+    color: var(--bb-ink);
+  }
+
+  em {
+    font-style: normal;
+    font-size: 0.82rem;
+    color: #78350f;
+    background: var(--bb-honey-soft);
+    padding: 0.4rem 0.55rem;
+    border-radius: 8px;
+    margin-top: 0.45rem;
+  }
+}
+
+.bb-phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 600;
+  color: var(--bb-honey);
+  margin-bottom: 0.25rem;
+}
+
+dl {
+  margin: 0;
+
+  > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.3rem 0;
+    font-size: 0.87rem;
+  }
+
+  dt {
+    color: var(--bb-muted);
+  }
+
+  dd {
+    margin: 0;
+    text-align: right;
+  }
+}
+
+.bb-event {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding-bottom: 1rem;
+
+  strong {
+    font-size: 0.9rem;
+  }
+
+  span {
+    font-size: 0.76rem;
+    color: var(--bb-muted);
+  }
+
+  em {
+    font-style: normal;
+    font-size: 0.8rem;
+    color: #44403c;
+  }
+}
+
+.bb-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* --------------------------------- dialogs ------------------------------- */
+
+.bb-dialog-lead {
+  margin: 0 0 0.85rem;
+  font-size: 0.86rem;
+  color: #44403c;
+}
+
+.bb-field {
+  display: block;
+  margin-bottom: 0.9rem;
+
+  > span {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+  }
+
+  em {
+    font-style: normal;
+    font-weight: 400;
+    color: var(--bb-muted);
+  }
+}
+
+.bb-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+
+  &.is-stacked {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 900px) {
+  .bb-run-body {
+    grid-template-columns: 1fr;
+  }
+}

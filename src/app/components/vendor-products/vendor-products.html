@@ -1,0 +1,384 @@
+<div class="bb-page">
+  <header class="bb-vp-head">
+    <div>
+      <h1 class="bb-page-title">Your products</h1>
+      <p class="bb-page-subtitle">
+        New listings start as drafts. An administrator approves them before they reach the shop.
+      </p>
+    </div>
+
+    <div class="bb-vp-tools">
+      <p-iconfield>
+        <p-inputicon styleClass="pi pi-search" />
+        <input
+          pInputText
+          type="search"
+          [ngModel]="search"
+          (ngModelChange)="onSearch($event)"
+          placeholder="Search your catalogue"
+          aria-label="Search products"
+        />
+      </p-iconfield>
+
+      <p-select
+        [(ngModel)]="status"
+        [options]="statusFilters"
+        optionLabel="label"
+        optionValue="value"
+        (onChange)="onFilter()"
+        styleClass="bb-vp-filter"
+        ariaLabel="Filter by status"
+      />
+
+      <p-button label="New product" icon="pi pi-plus" (onClick)="openProduct()" />
+    </div>
+  </header>
+
+  @if (loading() || error()) {
+    <bb-state-block [loading]="loading()" [error]="error()" loadingText="Loading your catalogue…" (retry)="load()" />
+  } @else if (!products().length) {
+    <bb-state-block
+      [empty]="true"
+      emptyIcon="pi-box"
+      emptyTitle="Nothing listed yet"
+      emptyText="Add your first bottle. You will need a size and a price before it can be sold."
+    >
+      <p-button label="New product" icon="pi pi-plus" (onClick)="openProduct()" />
+    </bb-state-block>
+  } @else {
+    <div class="bb-card">
+      <p-table
+        [value]="products()"
+        [lazy]="true"
+        [paginator]="true"
+        [rows]="rows"
+        [first]="first"
+        [totalRecords]="total()"
+        [rowsPerPageOptions]="[20, 50, 100]"
+        (onPage)="onPage($event)"
+        styleClass="bb-table"
+        [tableStyle]="{ 'min-width': '58rem' }"
+      >
+        <ng-template #header>
+          <tr>
+            <th>Product</th>
+            <th>Type</th>
+            <th class="bb-right">Sizes</th>
+            <th class="bb-right">From</th>
+            <th class="bb-right">Stock</th>
+            <th>Status</th>
+            <th class="bb-right">Actions</th>
+          </tr>
+        </ng-template>
+
+        <ng-template #body let-product>
+          <tr>
+            <td>
+              <div class="bb-name-cell">
+                <strong>{{ product.name }}</strong>
+                <span>
+                  @if (product.brand) { {{ product.brand.name }} · }
+                  @if (product.category) { {{ product.category.name }} }
+                </span>
+                @if (product.status === 'REJECTED' && product.rejectionReason) {
+                  <em>{{ product.rejectionReason }}</em>
+                }
+              </div>
+            </td>
+            <td>{{ humanise(product.productType) }}</td>
+            <td class="bb-right">{{ product.variants?.length || 0 }}</td>
+            <td class="bb-right bb-money">
+              @if (priceFrom(product) !== null) { {{ priceFrom(product) | money }} } @else { — }
+            </td>
+            <td class="bb-right" [class.bb-zero]="stockOf(product) === 0">{{ stockOf(product) }}</td>
+            <td><p-tag [value]="humanise(product.status)" [severity]="toneFor(product.status)" /></td>
+            <td class="bb-right">
+              <div class="bb-row-actions">
+                @if (product.status === 'DRAFT' || product.status === 'REJECTED') {
+                  <p-button
+                    label="Submit"
+                    icon="pi pi-send"
+                    size="small"
+                    [loading]="busyId() === product.id"
+                    (onClick)="submitForApproval(product)"
+                  />
+                }
+                <p-button
+                  icon="pi pi-plus"
+                  severity="secondary"
+                  [text]="true"
+                  size="small"
+                  pTooltip="Add another size"
+                  (onClick)="openVariant(product)"
+                />
+                <p-button
+                  icon="pi pi-pencil"
+                  severity="secondary"
+                  [text]="true"
+                  size="small"
+                  pTooltip="Edit"
+                  (onClick)="openProduct(product)"
+                />
+                <p-button
+                  icon="pi pi-trash"
+                  severity="danger"
+                  [text]="true"
+                  size="small"
+                  pTooltip="Remove"
+                  (onClick)="remove(product, $event)"
+                />
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  }
+</div>
+
+<!-- Create / edit product -->
+<p-dialog
+  [header]="editingId() ? 'Edit product' : 'New product'"
+  [visible]="productDialog()"
+  (visibleChange)="productDialog.set($event)"
+  [modal]="true"
+  [style]="{ width: '36rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  <form [formGroup]="productForm" (ngSubmit)="saveProduct()" novalidate>
+    <label class="bb-field">
+      <span>Name</span>
+      <input pInputText formControlName="name" placeholder="Kingfisher Premium Lager" />
+      @if (invalidIn('productForm', 'name')) { <small class="bb-error">Required.</small> }
+    </label>
+
+    <div class="bb-grid-2">
+      <div class="bb-field">
+        <span>Category</span>
+        <p-select
+          formControlName="categoryId"
+          [options]="categories()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Choose a category"
+          styleClass="w-full"
+        />
+        @if (invalidIn('productForm', 'categoryId')) { <small class="bb-error">Required.</small> }
+      </div>
+
+      <div class="bb-field">
+        <span>Brand <em>(optional)</em></span>
+        <p-select
+          formControlName="brandId"
+          [options]="brands()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Choose a brand"
+          [filter]="true"
+          filterBy="name"
+          [showClear]="true"
+          styleClass="w-full"
+        />
+      </div>
+    </div>
+
+    <div class="bb-grid-3">
+      <div class="bb-field">
+        <span>Type</span>
+        <p-select
+          formControlName="productType"
+          [options]="productTypes"
+          optionLabel="label"
+          optionValue="value"
+          styleClass="w-full"
+        />
+      </div>
+
+      <div class="bb-field">
+        <span>ABV %</span>
+        <p-inputnumber
+          formControlName="alcoholPercentage"
+          [min]="0"
+          [max]="100"
+          [maxFractionDigits]="2"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+        />
+      </div>
+
+      <label class="bb-field">
+        <span>Origin</span>
+        <input pInputText formControlName="originCountry" placeholder="India" />
+      </label>
+    </div>
+
+    <label class="bb-field">
+      <span>Description <em>(optional)</em></span>
+      <textarea pTextarea rows="3" formControlName="description"></textarea>
+    </label>
+
+    @if (!editingId()) {
+      <p-divider />
+
+      <h3>First size and price</h3>
+      <p class="bb-dialog-lead">
+        A listing needs at least one size before it can be sold. You can add more afterwards.
+      </p>
+
+      <ng-container [formGroup]="variantForm">
+        <div class="bb-grid-3">
+          <label class="bb-field">
+            <span>SKU</span>
+            <input pInputText formControlName="sku" placeholder="KF-PREM-650" />
+            @if (invalidIn('variantForm', 'sku')) { <small class="bb-error">Required.</small> }
+          </label>
+
+          <div class="bb-field">
+            <span>Size (ml)</span>
+            <p-inputnumber formControlName="sizeMl" [min]="1" styleClass="w-full" inputStyleClass="w-full" />
+          </div>
+
+          <div class="bb-field">
+            <span>Pack size</span>
+            <p-inputnumber formControlName="packSize" [min]="1" styleClass="w-full" inputStyleClass="w-full" />
+          </div>
+        </div>
+
+        <div class="bb-grid-3">
+          <div class="bb-field">
+            <span>MRP</span>
+            <p-inputnumber
+              formControlName="mrp"
+              mode="currency"
+              currency="INR"
+              locale="en-IN"
+              [min]="0"
+              styleClass="w-full"
+              inputStyleClass="w-full"
+            />
+          </div>
+
+          <div class="bb-field">
+            <span>Selling price</span>
+            <p-inputnumber
+              formControlName="sellingPrice"
+              mode="currency"
+              currency="INR"
+              locale="en-IN"
+              [min]="0"
+              styleClass="w-full"
+              inputStyleClass="w-full"
+            />
+          </div>
+
+          <div class="bb-field">
+            <span>Tax %</span>
+            <p-inputnumber formControlName="taxPercent" [min]="0" [max]="100" styleClass="w-full" inputStyleClass="w-full" />
+          </div>
+        </div>
+
+        <div class="bb-grid-2">
+          <div class="bb-field">
+            <span>Opening stock</span>
+            <p-inputnumber formControlName="initialStock" [min]="0" styleClass="w-full" inputStyleClass="w-full" />
+          </div>
+
+          <div class="bb-field">
+            <span>Warn me below</span>
+            <p-inputnumber formControlName="reorderLevel" [min]="0" styleClass="w-full" inputStyleClass="w-full" />
+          </div>
+        </div>
+      </ng-container>
+    }
+
+    <div class="bb-dialog-actions">
+      <p-button label="Cancel" severity="secondary" [text]="true" type="button" (onClick)="productDialog.set(false)" />
+      <p-button
+        [label]="editingId() ? 'Save changes' : 'Create draft'"
+        icon="pi pi-check"
+        type="submit"
+        [loading]="savingProduct()"
+      />
+    </div>
+  </form>
+</p-dialog>
+
+<!-- Add a size -->
+<p-dialog
+  [header]="'Add a size to ' + (variantProduct?.name || 'this product')"
+  [visible]="variantDialog()"
+  (visibleChange)="variantDialog.set($event)"
+  [modal]="true"
+  [style]="{ width: '32rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  <form [formGroup]="variantForm" (ngSubmit)="saveVariant()" novalidate>
+    <div class="bb-grid-3">
+      <label class="bb-field">
+        <span>SKU</span>
+        <input pInputText formControlName="sku" />
+        @if (invalidIn('variantForm', 'sku')) { <small class="bb-error">Required.</small> }
+      </label>
+
+      <div class="bb-field">
+        <span>Size (ml)</span>
+        <p-inputnumber formControlName="sizeMl" [min]="1" styleClass="w-full" inputStyleClass="w-full" />
+      </div>
+
+      <div class="bb-field">
+        <span>Pack size</span>
+        <p-inputnumber formControlName="packSize" [min]="1" styleClass="w-full" inputStyleClass="w-full" />
+      </div>
+    </div>
+
+    <div class="bb-grid-3">
+      <div class="bb-field">
+        <span>MRP</span>
+        <p-inputnumber
+          formControlName="mrp"
+          mode="currency"
+          currency="INR"
+          locale="en-IN"
+          [min]="0"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+        />
+      </div>
+
+      <div class="bb-field">
+        <span>Selling price</span>
+        <p-inputnumber
+          formControlName="sellingPrice"
+          mode="currency"
+          currency="INR"
+          locale="en-IN"
+          [min]="0"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+        />
+      </div>
+
+      <div class="bb-field">
+        <span>Tax %</span>
+        <p-inputnumber formControlName="taxPercent" [min]="0" [max]="100" styleClass="w-full" inputStyleClass="w-full" />
+      </div>
+    </div>
+
+    <div class="bb-grid-2">
+      <div class="bb-field">
+        <span>Opening stock</span>
+        <p-inputnumber formControlName="initialStock" [min]="0" styleClass="w-full" inputStyleClass="w-full" />
+      </div>
+
+      <div class="bb-field">
+        <span>Warn me below</span>
+        <p-inputnumber formControlName="reorderLevel" [min]="0" styleClass="w-full" inputStyleClass="w-full" />
+      </div>
+    </div>
+
+    <div class="bb-dialog-actions">
+      <p-button label="Cancel" severity="secondary" [text]="true" type="button" (onClick)="variantDialog.set(false)" />
+      <p-button label="Add size" icon="pi pi-check" type="submit" [loading]="savingVariant()" />
+    </div>
+  </form>
+</p-dialog>

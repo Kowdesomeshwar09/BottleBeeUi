@@ -1,0 +1,29 @@
+.bb-tab-tools {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0.85rem 0;
+}
+
+:host ::ng-deep .bb-filter {
+  min-width: 13rem;
+}
+
+.bb-sub {
+  font-size: 0.74rem;
+  color: var(--bb-muted);
+
+  &.is-danger {
+    color: #b91c1c;
+  }
+}
+
+.bb-doc-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--bb-honey);
+}

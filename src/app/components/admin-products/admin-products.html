@@ -1,0 +1,263 @@
+<div class="bb-page">
+  <header class="bb-ap-head">
+    <div>
+      <h1 class="bb-page-title">Product approvals</h1>
+      <p class="bb-page-subtitle">
+        Check that the name, type and strength describe what is actually in the bottle.
+      </p>
+    </div>
+
+    <div class="bb-ap-tools">
+      <p-iconfield>
+        <p-inputicon styleClass="pi pi-search" />
+        <input
+          pInputText
+          type="search"
+          [ngModel]="search"
+          (ngModelChange)="onSearch($event)"
+          placeholder="Search products"
+          aria-label="Search products"
+        />
+      </p-iconfield>
+
+      <p-select
+        [(ngModel)]="filter"
+        [options]="filters"
+        optionLabel="label"
+        optionValue="value"
+        (onChange)="onFilter()"
+        styleClass="bb-filter"
+        ariaLabel="Filter by status"
+      />
+    </div>
+  </header>
+
+  @if (loading() || error()) {
+    <bb-state-block [loading]="loading()" [error]="error()" loadingText="Loading products…" (retry)="load()" />
+  } @else if (!products().length) {
+    <bb-state-block
+      [empty]="true"
+      emptyIcon="pi-box"
+      emptyTitle="Nothing here"
+      [emptyText]="filter === 'PENDING_APPROVAL' ? 'No products waiting for approval.' : 'Nothing matches that filter.'"
+    />
+  } @else {
+    <div class="bb-card">
+      <p-table
+        [value]="products()"
+        [lazy]="true"
+        [paginator]="true"
+        [rows]="rows"
+        [first]="first"
+        [totalRecords]="total()"
+        [rowsPerPageOptions]="[25, 50, 100]"
+        (onPage)="onPage($event)"
+        styleClass="bb-table"
+        [tableStyle]="{ 'min-width': '58rem' }"
+      >
+        <ng-template #header>
+          <tr>
+            <th>Product</th>
+            <th>Store</th>
+            <th>Type</th>
+            <th class="bb-right">ABV</th>
+            <th class="bb-right">Sizes</th>
+            <th class="bb-right">Price</th>
+            <th>Submitted</th>
+            <th>Status</th>
+            <th class="bb-right">Decision</th>
+          </tr>
+        </ng-template>
+
+        <ng-template #body let-product>
+          <tr>
+            <td>
+              <button type="button" class="bb-link-btn" (click)="openDetail(product)">
+                {{ product.name }}
+              </button>
+              @if (product.brand) { <div class="bb-sub">{{ product.brand.name }}</div> }
+              @if (product.status === 'REJECTED' && product.rejectionReason) {
+                <div class="bb-sub is-danger">{{ product.rejectionReason }}</div>
+              }
+            </td>
+            <td>{{ product.vendor?.businessName || '—' }}</td>
+            <td>{{ humanise(product.productType) }}</td>
+            <td class="bb-right">
+              @if (product.alcoholPercentage !== null) {
+                <span [class.bb-odd]="abvLooksOdd(product)">{{ product.alcoholPercentage }}%</span>
+                @if (abvLooksOdd(product)) {
+                  <i class="pi pi-exclamation-triangle bb-odd-icon" title="Unusual for this type"></i>
+                }
+              } @else { — }
+            </td>
+            <td class="bb-right">{{ product.variants?.length || 0 }}</td>
+            <td class="bb-right">{{ priceRange(product) }}</td>
+            <td class="bb-nowrap">{{ product.createdAt | date: 'd MMM y' }}</td>
+            <td><p-tag [value]="humanise(product.status)" [severity]="toneFor(product.status)" /></td>
+            <td class="bb-right">
+              <div class="bb-row-actions">
+                @if (product.status === 'PENDING_APPROVAL') {
+                  <p-button label="Approve" icon="pi pi-check" size="small" (onClick)="askDecision(product, 'ACTIVE')" />
+                  <p-button
+                    label="Reject"
+                    icon="pi pi-times"
+                    severity="danger"
+                    [outlined]="true"
+                    size="small"
+                    (onClick)="askDecision(product, 'REJECTED')"
+                  />
+                } @else {
+                  <p-button
+                    icon="pi pi-eye"
+                    severity="secondary"
+                    [text]="true"
+                    size="small"
+                    (onClick)="openDetail(product)"
+                  />
+                }
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  }
+</div>
+
+<!-- Detail -->
+<p-dialog
+  [header]="detail()?.name || 'Product'"
+  [visible]="detailOpen()"
+  (visibleChange)="detailOpen.set($event)"
+  [modal]="true"
+  [style]="{ width: '36rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  @if (detail(); as p) {
+    <div class="bb-detail-tags">
+      <p-tag [value]="humanise(p.status)" [severity]="toneFor(p.status)" />
+      <p-tag [value]="humanise(p.productType)" severity="secondary" />
+      @if (p.isFeatured) { <p-tag value="Featured" severity="warn" /> }
+    </div>
+
+    @if (abvLooksOdd(p)) {
+      <p-message
+        severity="warn"
+        [text]="p.alcoholPercentage + '% is unusual for ' + humanise(p.productType).toLowerCase() + '. Check the label before approving.'"
+        styleClass="w-full mb-3"
+      />
+    }
+
+    <dl>
+      <div><dt>Store</dt><dd>{{ p.vendor?.businessName || '—' }}</dd></div>
+      <div><dt>Category</dt><dd>{{ p.category?.name || '—' }}</dd></div>
+      <div><dt>Brand</dt><dd>{{ p.brand?.name || '—' }}</dd></div>
+      <div>
+        <dt>Strength</dt>
+        <dd>
+          @if (p.alcoholPercentage !== null) {
+            <span [class.bb-odd]="abvLooksOdd(p)">{{ p.alcoholPercentage }}% ABV</span>
+          } @else { not stated }
+        </dd>
+      </div>
+      <div><dt>Origin</dt><dd>{{ p.originCountry || '—' }}</dd></div>
+      <div><dt>Submitted</dt><dd>{{ p.createdAt | date: 'd MMM y, h:mm a' }}</dd></div>
+    </dl>
+
+    @if (p.description) {
+      <p-divider />
+      <h3>Description</h3>
+      <p class="bb-note">{{ p.description }}</p>
+    }
+
+    @if (p.variants?.length) {
+      <p-divider />
+      <h3>Sizes and prices</h3>
+      <ul class="bb-item-list">
+        @for (variant of p.variants; track variant.id) {
+          <li>
+            <div>
+              <strong>{{ variant.label || variant.sku }}</strong>
+              <span>SKU {{ variant.sku }} · {{ variant.taxPercent }}% tax</span>
+            </div>
+            <div class="bb-item-right">
+              <strong class="bb-money">{{ variant.sellingPrice | money }}</strong>
+              @if (variant.discountPercent > 0) {
+                <span>MRP {{ variant.mrp | money }}</span>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    }
+
+    @if (p.images?.length) {
+      <p-divider />
+      <h3>Images</h3>
+      <div class="bb-image-strip">
+        @for (image of p.images; track image.id) {
+          <img [src]="image.imageUrl" [alt]="image.altText || p.name" />
+        }
+      </div>
+    }
+
+    @if (p.status === 'PENDING_APPROVAL') {
+      <div class="bb-dialog-actions">
+        <p-button
+          label="Reject"
+          icon="pi pi-times"
+          severity="danger"
+          [outlined]="true"
+          (onClick)="askDecision(p, 'REJECTED')"
+        />
+        <p-button label="Approve" icon="pi pi-check" (onClick)="askDecision(p, 'ACTIVE')" />
+      </div>
+    }
+  }
+</p-dialog>
+
+<!-- Decision -->
+<p-dialog
+  [header]="decisionStatus === 'ACTIVE' ? 'Approve this product' : 'Reject this product'"
+  [visible]="decisionOpen()"
+  (visibleChange)="decisionOpen.set($event)"
+  [modal]="true"
+  [style]="{ width: '28rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  @if (decisionStatus === 'ACTIVE') {
+    <p class="bb-dialog-lead">
+      The product appears in the shop immediately, subject to the store holding a valid licence for
+      the customer's region.
+    </p>
+
+    <div class="bb-field bb-inline">
+      <p-checkbox [(ngModel)]="isFeatured" [binary]="true" inputId="featured" />
+      <label for="featured">Feature this product on the storefront</label>
+    </div>
+  } @else {
+    <p class="bb-dialog-lead">
+      The store owner sees this reason and can correct the listing and resubmit.
+    </p>
+  }
+
+  <div class="bb-field">
+    <span>
+      Reason
+      @if (decisionStatus === 'REJECTED') { <em>(required)</em> } @else { <em>(optional)</em> }
+    </span>
+    <textarea pTextarea rows="3" [(ngModel)]="decisionReason" maxlength="500"></textarea>
+  </div>
+
+  <div class="bb-dialog-actions">
+    <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="decisionOpen.set(false)" />
+    <p-button
+      [label]="decisionStatus === 'ACTIVE' ? 'Approve' : 'Reject'"
+      icon="pi pi-check"
+      [severity]="decisionStatus === 'ACTIVE' ? 'primary' : 'danger'"
+      [disabled]="decisionStatus === 'REJECTED' && decisionReason.trim().length < 3"
+      [loading]="deciding()"
+      (onClick)="confirmDecision()"
+    />
+  </div>
+</p-dialog>
