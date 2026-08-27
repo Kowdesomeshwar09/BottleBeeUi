@@ -70,3 +70,12 @@ desktop.ini
 # API origin and a publishable payment key only — no secrets — and a fresh
 # clone has to run against a local API without hand-writing a file first.
 # Override it per environment at deploy time, not in the bundle.
+
+# Playwright
+/playwright-report
+/test-results
+/blob-report
+/.playwright
+
+# Saved E2E sessions (real tokens for the local seed data)
+e2e/.auth/
