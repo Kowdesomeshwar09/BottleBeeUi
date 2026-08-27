@@ -1,0 +1,202 @@
+<div class="bb-page">
+  <h1 class="bb-page-title">Your cart</h1>
+  <p class="bb-page-subtitle">One store per order, so everything arrives together.</p>
+
+  @if (loading() || error()) {
+    <bb-state-block [loading]="loading()" [error]="error()" loadingText="Loading your cart…" (retry)="load()" />
+  } @else if (!cart() || !cart()!.items.length) {
+    <bb-state-block
+      [empty]="true"
+      emptyIcon="pi-shopping-cart"
+      emptyTitle="Your cart is empty"
+      emptyText="Browse the shop and add something you fancy."
+    >
+      <a routerLink="/shop"><p-button label="Start shopping" icon="pi pi-shopping-bag" /></a>
+    </bb-state-block>
+  } @else {
+    <div class="bb-cart">
+      <section class="bb-cart-items">
+        @if (cart()!.vendor; as vendor) {
+          <div class="bb-store-strip bb-card">
+            <i class="pi pi-shop"></i>
+            <div>
+              <strong>{{ vendor.businessName }}</strong>
+              @if (vendor.minOrderAmount) {
+                <span>Minimum order {{ vendor.minOrderAmount | money }}</span>
+              }
+            </div>
+            <button type="button" class="bb-link-btn" (click)="clear($event)">Empty cart</button>
+          </div>
+        }
+
+        @for (warning of cart()!.warnings; track warning) {
+          <p-message severity="warn" [text]="warning" styleClass="w-full mb-2" />
+        }
+
+        @if (cart()!.couponError; as couponError) {
+          <p-message severity="warn" [text]="couponError" styleClass="w-full mb-2" />
+        }
+
+        @for (item of cart()!.items; track item.id) {
+          <article class="bb-cart-row bb-card" [class.is-blocked]="!item.isPurchasable">
+            <div class="bb-cart-info">
+              <strong>{{ item.productName }}</strong>
+              <span class="bb-cart-variant">
+                {{ item.variantLabel || item.sku }}
+                @if (item.mrp && item.mrp > item.unitPrice) {
+                  · <span class="bb-strike">{{ item.mrp | money }}</span>
+                }
+              </span>
+
+              @if (!item.isPurchasable) {
+                <p-tag value="No longer available" severity="danger" />
+              } @else if (!item.inStock) {
+                <p-tag
+                  [value]="item.availableQuantity === 0 ? 'Out of stock' : 'Only ' + item.availableQuantity + ' left'"
+                  severity="warn"
+                />
+              }
+            </div>
+
+            <div class="bb-cart-qty">
+              <button
+                type="button"
+                aria-label="Reduce quantity"
+                [disabled]="busyItemId() === item.id"
+                (click)="changeQuantity(item, -1)"
+              >
+                <i class="pi pi-minus"></i>
+              </button>
+              <span>{{ item.quantity }}</span>
+              <button
+                type="button"
+                aria-label="Increase quantity"
+                [disabled]="busyItemId() === item.id || (item.availableQuantity !== null && item.quantity >= item.availableQuantity)"
+                (click)="changeQuantity(item, 1)"
+              >
+                <i class="pi pi-plus"></i>
+              </button>
+            </div>
+
+            <div class="bb-cart-line">
+              <strong class="bb-money">{{ item.lineTotal | money }}</strong>
+              @if (item.discountAmount > 0) {
+                <span class="bb-saved">−{{ item.discountAmount | money }}</span>
+              }
+              <button
+                type="button"
+                class="bb-link-btn"
+                [disabled]="busyItemId() === item.id"
+                (click)="remove(item)"
+              >
+                Remove
+              </button>
+            </div>
+          </article>
+        }
+      </section>
+
+      <aside class="bb-cart-summary">
+        <div class="bb-card bb-summary-box">
+          <h2>Order summary</h2>
+
+          <dl>
+            <div><dt>Subtotal</dt><dd class="bb-money">{{ cart()!.subtotal | money }}</dd></div>
+            @if (cart()!.discountTotal > 0) {
+              <div class="is-saving">
+                <dt>Discount</dt>
+                <dd class="bb-money">−{{ cart()!.discountTotal | money }}</dd>
+              </div>
+            }
+            <div><dt>Tax</dt><dd class="bb-money">{{ cart()!.taxTotal | money }}</dd></div>
+            <div>
+              <dt>Delivery</dt>
+              <dd class="bb-money">
+                @if (cart()!.deliveryFee === 0) { Free } @else { {{ cart()!.deliveryFee | money }} }
+              </dd>
+            </div>
+          </dl>
+
+          @if (cart()!.amountToFreeDelivery > 0) {
+            <p class="bb-free-hint">
+              Add {{ cart()!.amountToFreeDelivery | money }} more for free delivery.
+            </p>
+          }
+
+          <p-divider />
+
+          <div class="bb-total">
+            <span>Total</span>
+            <strong class="bb-money">{{ cart()!.grandTotal | money }}</strong>
+          </div>
+
+          <p-button
+            label="Proceed to checkout"
+            icon="pi pi-arrow-right"
+            iconPos="right"
+            styleClass="w-full mt-3"
+            [disabled]="!canCheckout"
+            (onClick)="toCheckout()"
+          />
+
+          @if (!canCheckout && cart()!.items.length) {
+            <p class="bb-blocked-note">Resolve the notes above to continue.</p>
+          }
+        </div>
+
+        <div class="bb-card bb-coupon-box">
+          <h2>Offers</h2>
+
+          @if (cart()!.coupon; as coupon) {
+            <div class="bb-applied">
+              <div>
+                <strong>{{ coupon.code }}</strong>
+                <span>{{ coupon.title }}</span>
+              </div>
+              <button type="button" class="bb-link-btn" [disabled]="couponBusy()" (click)="removeCoupon()">
+                Remove
+              </button>
+            </div>
+          } @else {
+            <div class="bb-coupon-entry">
+              <input
+                pInputText
+                [(ngModel)]="couponCode"
+                placeholder="Enter a code"
+                aria-label="Coupon code"
+                (keyup.enter)="applyCoupon()"
+              />
+              <p-button label="Apply" [loading]="couponBusy()" (onClick)="applyCoupon()" />
+            </div>
+          }
+
+          @if (coupons().length) {
+            <ul class="bb-offer-list">
+              @for (offer of coupons(); track offer.id) {
+                <li [class.is-locked]="!offer.estimatedDiscount">
+                  <div>
+                    <strong>{{ offer.code }}</strong>
+                    <span>{{ offer.title }}</span>
+                    @if (offer.minOrderAmount) {
+                      <em>Minimum {{ offer.minOrderAmount | money }}</em>
+                    }
+                  </div>
+                  @if (!cart()!.coupon) {
+                    <button type="button" class="bb-link-btn" (click)="applyCoupon(offer.code)">
+                      Apply
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </div>
+
+        <p class="bb-legal">
+          Age and licensing checks run again at checkout against your delivery address. Dry days and
+          permitted sale hours vary by state.
+        </p>
+      </aside>
+    </div>
+  }
+</div>

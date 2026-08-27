@@ -1,0 +1,231 @@
+<div class="bb-page">
+  <header class="bb-shop-head">
+    <div>
+      <h1 class="bb-page-title">Shop</h1>
+      <p class="bb-page-subtitle">
+        Beer, wine and spirits from licensed stores near you, delivered fast.
+      </p>
+    </div>
+
+    <div class="bb-shop-tools">
+      <p-iconfield styleClass="bb-search">
+        <p-inputicon styleClass="pi pi-search" />
+        <input
+          pInputText
+          type="search"
+          [ngModel]="search"
+          (ngModelChange)="onSearch($event)"
+          placeholder="Search for a bottle, brand or style"
+          aria-label="Search products"
+        />
+      </p-iconfield>
+
+      <p-select
+        [(ngModel)]="sort"
+        [options]="sorts"
+        optionLabel="label"
+        (onChange)="applyFilters()"
+        styleClass="bb-sort"
+        ariaLabel="Sort products"
+      />
+
+      <p-button
+        icon="pi pi-filter"
+        label="Filters"
+        severity="secondary"
+        [outlined]="true"
+        styleClass="bb-filter-toggle"
+        (onClick)="filtersOpen.set(!filtersOpen())"
+      />
+    </div>
+  </header>
+
+  <div class="bb-shop-body">
+    <aside class="bb-filters bb-card" [class.is-open]="filtersOpen()" aria-label="Filters">
+      <div class="bb-filter-head">
+        <strong>Filters</strong>
+        @if (hasFilters) {
+          <button type="button" class="bb-link-btn" (click)="clearFilters()">Clear all</button>
+        }
+      </div>
+
+      <div class="bb-filter-group">
+        <label for="f-category">Category</label>
+        <p-select
+          inputId="f-category"
+          [(ngModel)]="categoryId"
+          [options]="categories()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="All categories"
+          [showClear]="true"
+          (onChange)="applyFilters()"
+          styleClass="w-full"
+        />
+      </div>
+
+      <div class="bb-filter-group">
+        <label for="f-brand">Brand</label>
+        <p-select
+          inputId="f-brand"
+          [(ngModel)]="brandId"
+          [options]="brands()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="All brands"
+          [filter]="true"
+          filterBy="name"
+          [showClear]="true"
+          (onChange)="applyFilters()"
+          styleClass="w-full"
+        />
+      </div>
+
+      <div class="bb-filter-group">
+        <label for="f-type">Type</label>
+        <p-select
+          inputId="f-type"
+          [(ngModel)]="productType"
+          [options]="productTypes()"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="All types"
+          [showClear]="true"
+          (onChange)="applyFilters()"
+          styleClass="w-full"
+        />
+      </div>
+
+      <div class="bb-filter-group">
+        <label>Price</label>
+        <p-slider
+          [(ngModel)]="priceRange"
+          [range]="true"
+          [min]="0"
+          [max]="priceCeiling()"
+          [step]="50"
+          (onSlideEnd)="applyFilters()"
+        />
+        <div class="bb-range-labels">
+          <span>{{ priceRange[0] | money }}</span>
+          <span>{{ priceRange[1] | money }}</span>
+        </div>
+      </div>
+
+      <div class="bb-filter-group">
+        <p-checkbox
+          inputId="f-stock"
+          [(ngModel)]="inStockOnly"
+          [binary]="true"
+          (onChange)="applyFilters()"
+        />
+        <label for="f-stock" class="bb-inline-label">In stock only</label>
+      </div>
+    </aside>
+
+    <section class="bb-results">
+      @if (loading()) {
+        <div class="bb-grid">
+          @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+            <div class="bb-card bb-skeleton-card">
+              <p-skeleton height="9rem" styleClass="mb-2" />
+              <p-skeleton width="70%" styleClass="mb-2" />
+              <p-skeleton width="40%" />
+            </div>
+          }
+        </div>
+      } @else if (error()) {
+        <bb-state-block [error]="error()" (retry)="load()" />
+      } @else if (!products().length) {
+        <bb-state-block
+          [empty]="true"
+          emptyIcon="pi-search"
+          emptyTitle="Nothing matched that"
+          emptyText="Try a different search, or widen the filters."
+        >
+          @if (hasFilters) {
+            <p-button label="Clear filters" severity="secondary" [outlined]="true" (onClick)="clearFilters()" />
+          }
+        </bb-state-block>
+      } @else {
+        <p class="bb-result-count">{{ total() }} {{ total() === 1 ? 'product' : 'products' }}</p>
+
+        <div class="bb-grid">
+          @for (product of products(); track product.id) {
+            <article class="bb-card bb-product">
+              <a [routerLink]="['/shop/product', product.slug]" class="bb-product-media">
+                @if (imageFor(product); as image) {
+                  <img [src]="image" [alt]="product.name" loading="lazy" />
+                } @else {
+                  <span class="bb-product-placeholder" aria-hidden="true">🍾</span>
+                }
+                @if (!inStock(product)) {
+                  <span class="bb-oos">Out of stock</span>
+                }
+              </a>
+
+              <div class="bb-product-body">
+                @if (product.brand) {
+                  <span class="bb-product-brand">{{ product.brand.name }}</span>
+                }
+
+                <a [routerLink]="['/shop/product', product.slug]" class="bb-product-name">
+                  {{ product.name }}
+                </a>
+
+                <div class="bb-product-meta">
+                  <p-tag [value]="humanise(product.productType)" severity="secondary" />
+                  @if (product.alcoholPercentage !== null) {
+                    <span class="bb-abv">{{ product.alcoholPercentage }}% ABV</span>
+                  }
+                </div>
+
+                @if (product.ratingCount > 0) {
+                  <div class="bb-product-rating">
+                    <p-rating [ngModel]="product.ratingAvg" [readonly]="true" [ngModelOptions]="{ standalone: true }" />
+                    <span>({{ product.ratingCount }})</span>
+                  </div>
+                }
+
+                @if (primaryVariant(product); as variant) {
+                  <div class="bb-product-price">
+                    <strong class="bb-money">{{ variant.sellingPrice | money }}</strong>
+                    @if (variant.discountPercent > 0) {
+                      <span class="bb-strike">{{ variant.mrp | money }}</span>
+                      <span class="bb-off">{{ variant.discountPercent }}% off</span>
+                    }
+                  </div>
+                  @if (variant.label) {
+                    <span class="bb-variant-label">{{ variant.label }}</span>
+                  }
+
+                  <p-button
+                    [label]="inStock(product) ? 'Add to cart' : 'Out of stock'"
+                    icon="pi pi-shopping-cart"
+                    styleClass="w-full mt-2"
+                    [disabled]="!inStock(product)"
+                    [loading]="addingId() === product.id"
+                    (onClick)="addToCart(product, $event)"
+                  />
+                }
+
+                @if (product.vendor) {
+                  <span class="bb-vendor">Sold by {{ product.vendor.businessName }}</span>
+                }
+              </div>
+            </article>
+          }
+        </div>
+
+        <p-paginator
+          [first]="(page() - 1) * limit()"
+          [rows]="limit()"
+          [totalRecords]="total()"
+          [rowsPerPageOptions]="[12, 24, 48]"
+          (onPageChange)="onPage($event)"
+          styleClass="mt-3"
+        />
+      }
+    </section>
+  </div>
+</div>

@@ -1,0 +1,176 @@
+<div class="bb-page">
+  @if (loading() || error()) {
+    <bb-state-block [loading]="loading()" [error]="error()" loadingText="Fetching the bottle…" (retry)="load()" />
+  } @else if (product(); as p) {
+    <nav class="bb-crumbs" aria-label="Breadcrumb">
+      <a routerLink="/shop">Shop</a>
+      @if (p.category) { <span>›</span> <span>{{ p.category.name }}</span> }
+      <span>›</span> <span class="bb-crumb-current">{{ p.name }}</span>
+    </nav>
+
+    <div class="bb-detail">
+      <section class="bb-gallery">
+        <div class="bb-gallery-main bb-card">
+          @if (activeImage(); as image) {
+            <img [src]="image" [alt]="p.name" />
+          } @else {
+            <span class="bb-gallery-placeholder" aria-hidden="true">🍾</span>
+          }
+        </div>
+
+        @if ((p.images || []).length > 1) {
+          <div class="bb-thumbs">
+            @for (image of p.images; track image.id) {
+              <button
+                type="button"
+                class="bb-thumb"
+                [class.is-active]="activeImage() === image.imageUrl"
+                (click)="activeImage.set(image.imageUrl)"
+                [attr.aria-label]="image.altText || 'View image'"
+              >
+                <img [src]="image.imageUrl" [alt]="image.altText || p.name" />
+              </button>
+            }
+          </div>
+        }
+      </section>
+
+      <section class="bb-buy">
+        @if (p.brand) { <span class="bb-detail-brand">{{ p.brand.name }}</span> }
+        <h1 class="bb-detail-name">{{ p.name }}</h1>
+
+        <div class="bb-detail-meta">
+          <p-tag [value]="humanise(p.productType)" severity="secondary" />
+          @if (p.alcoholPercentage !== null) { <span>{{ p.alcoholPercentage }}% ABV</span> }
+          @if (p.originCountry) { <span>{{ p.originCountry }}</span> }
+        </div>
+
+        @if (p.ratingCount > 0) {
+          <div class="bb-detail-rating">
+            <p-rating [ngModel]="p.ratingAvg" [readonly]="true" [ngModelOptions]="{ standalone: true }" />
+            <span>{{ p.ratingAvg }} · {{ p.ratingCount }} {{ p.ratingCount === 1 ? 'review' : 'reviews' }}</span>
+          </div>
+        }
+
+        @if (variants().length) {
+          <div class="bb-variants">
+            <span class="bb-label">Size</span>
+            <div class="bb-variant-row">
+              @for (variant of variants(); track variant.id) {
+                <button
+                  type="button"
+                  class="bb-variant"
+                  [class.is-active]="selectedVariantId() === variant.id"
+                  [class.is-out]="(variant.inventory?.quantityAvailable ?? 0) === 0"
+                  [disabled]="(variant.inventory?.quantityAvailable ?? 0) === 0"
+                  (click)="selectVariant(variant)"
+                >
+                  <strong>{{ variant.label || variant.sku }}</strong>
+                  <span class="bb-money">{{ variant.sellingPrice | money }}</span>
+                  @if ((variant.inventory?.quantityAvailable ?? 0) === 0) {
+                    <em>Out of stock</em>
+                  }
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        @if (selected(); as variant) {
+          <div class="bb-price-block">
+            <strong class="bb-money">{{ variant.sellingPrice | money }}</strong>
+            @if (variant.discountPercent > 0) {
+              <span class="bb-strike">{{ variant.mrp | money }}</span>
+              <span class="bb-off">{{ variant.discountPercent }}% off</span>
+            }
+            <small>Inclusive of {{ variant.taxPercent }}% tax</small>
+          </div>
+
+          @if (available() > 0 && available() <= 5) {
+            <p-message severity="warn" [text]="'Only ' + available() + ' left at this store'" styleClass="w-full mb-3" />
+          }
+
+          <div class="bb-buy-row">
+            <p-inputnumber
+              [(ngModel)]="quantity"
+              [showButtons]="true"
+              buttonLayout="horizontal"
+              incrementButtonIcon="pi pi-plus"
+              decrementButtonIcon="pi pi-minus"
+              [min]="1"
+              [max]="maxQuantity()"
+              [disabled]="available() === 0"
+              inputStyleClass="bb-qty-input"
+              ariaLabel="Quantity"
+            />
+
+            <p-button
+              label="Add to cart"
+              icon="pi pi-shopping-cart"
+              severity="secondary"
+              [outlined]="true"
+              [disabled]="available() === 0"
+              [loading]="adding()"
+              (onClick)="addToCart()"
+            />
+
+            <p-button
+              label="Buy now"
+              icon="pi pi-bolt"
+              [disabled]="available() === 0"
+              [loading]="adding()"
+              (onClick)="buyNow()"
+            />
+          </div>
+        } @else {
+          <p-message severity="info" text="This product has no sizes listed right now." styleClass="w-full" />
+        }
+
+        @if (p.vendor) {
+          <div class="bb-vendor-card bb-card">
+            <i class="pi pi-shop"></i>
+            <div>
+              <strong>{{ p.vendor.businessName }}</strong>
+              <span>
+                Licensed retailer
+                @if (p.vendor.ratingAvg) { · {{ p.vendor.ratingAvg }} ★ }
+              </span>
+            </div>
+          </div>
+        }
+
+        <p class="bb-legal">
+          Sale is subject to the licensing rules of your delivery region, including dry days and
+          permitted sale hours. A valid government photo ID showing you are of legal drinking age is
+          required at handover; the order will be returned if it cannot be produced.
+        </p>
+      </section>
+    </div>
+
+    @if (p.description) {
+      <p-divider />
+      <section class="bb-about">
+        <h2>About this bottle</h2>
+        <p>{{ p.description }}</p>
+      </section>
+    }
+
+    @if (reviews().length) {
+      <p-divider />
+      <section class="bb-reviews">
+        <h2>What customers said</h2>
+        @for (review of reviews(); track review.id) {
+          <article class="bb-review">
+            <div class="bb-review-head">
+              <p-rating [ngModel]="review.rating" [readonly]="true" [ngModelOptions]="{ standalone: true }" />
+              <strong>{{ review.reviewer }}</strong>
+              <span>{{ review.createdAt | date: 'mediumDate' }}</span>
+            </div>
+            @if (review.title) { <h3>{{ review.title }}</h3> }
+            @if (review.comment) { <p>{{ review.comment }}</p> }
+          </article>
+        }
+      </section>
+    }
+  }
+</div>

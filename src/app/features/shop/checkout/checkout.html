@@ -1,0 +1,290 @@
+<div class="bb-page">
+  <h1 class="bb-page-title">Checkout</h1>
+  <p class="bb-page-subtitle">
+    We re-check age, licensing and stock against your delivery address before the order is placed.
+  </p>
+
+  @if (loading() || error()) {
+    <bb-state-block [loading]="loading()" [error]="error()" loadingText="Getting ready…" (retry)="load()" />
+  } @else {
+    <div class="bb-checkout">
+      <div class="bb-checkout-main">
+        <!-- 1. Where -->
+        <section class="bb-step bb-card">
+          <header>
+            <span class="bb-step-num">1</span>
+            <h2>Delivery address</h2>
+            <p-button
+              label="Add new"
+              icon="pi pi-plus"
+              severity="secondary"
+              [text]="true"
+              size="small"
+              (onClick)="openAddressDialog()"
+            />
+          </header>
+
+          @if (!addresses().length) {
+            <p class="bb-step-empty">
+              You have no saved addresses. Add one so we know which state's rules apply.
+            </p>
+          } @else {
+            <div class="bb-address-list">
+              @for (address of addresses(); track address.id) {
+                <label class="bb-address" [class.is-active]="selectedAddressId === address.id">
+                  <p-radiobutton
+                    name="address"
+                    [value]="address.id"
+                    [(ngModel)]="selectedAddressId"
+                    (onClick)="chooseAddress(address.id)"
+                    [inputId]="'addr-' + address.id"
+                  />
+                  <div>
+                    <strong>
+                      {{ address.label || 'Address' }}
+                      @if (address.isDefault) { <em>Default</em> }
+                    </strong>
+                    <span>{{ address.recipientName }} · {{ address.phone }}</span>
+                    <span>
+                      {{ address.addressLine1 }}@if (address.addressLine2) {, {{ address.addressLine2 }}}
+                    </span>
+                    <span>{{ address.city }}, {{ address.state }} {{ address.postalCode }}</span>
+                  </div>
+                </label>
+              }
+            </div>
+          }
+        </section>
+
+        <!-- 2. How to pay -->
+        <section class="bb-step bb-card">
+          <header>
+            <span class="bb-step-num">2</span>
+            <h2>Payment</h2>
+          </header>
+
+          <div class="bb-methods">
+            @for (method of paymentMethods; track method.value) {
+              <label class="bb-method" [class.is-active]="paymentMethod === method.value">
+                <p-radiobutton
+                  name="paymentMethod"
+                  [value]="method.value"
+                  [(ngModel)]="paymentMethod"
+                  [inputId]="'pm-' + method.value"
+                />
+                <i class="pi" [class]="method.icon"></i>
+                <div>
+                  <strong>{{ method.label }}</strong>
+                  <span>{{ method.hint }}</span>
+                </div>
+              </label>
+            }
+          </div>
+        </section>
+
+        <!-- 3. Anything else -->
+        <section class="bb-step bb-card">
+          <header>
+            <span class="bb-step-num">3</span>
+            <h2>Note for the store <em>(optional)</em></h2>
+          </header>
+
+          <textarea
+            pTextarea
+            rows="2"
+            [(ngModel)]="customerNotes"
+            maxlength="500"
+            placeholder="Gate code, landmark, anything the rider should know"
+            aria-label="Note for the store"
+          ></textarea>
+        </section>
+      </div>
+
+      <aside class="bb-checkout-side">
+        @if (blockers().length) {
+          <div class="bb-card bb-blockers">
+            <h2><i class="pi pi-exclamation-circle"></i> Before you can order</h2>
+            <ul>
+              @for (blocker of blockers(); track blocker.code + blocker.message) {
+                <li>{{ blocker.message }}</li>
+              }
+            </ul>
+            @if (!addresses().length) {
+              <p-button label="Add an address" icon="pi pi-plus" styleClass="w-full mt-2" (onClick)="openAddressDialog()" />
+            }
+          </div>
+        }
+
+        @if (compliance(); as rule) {
+          <div class="bb-card bb-compliance">
+            <h2><i class="pi pi-verified"></i> Regional rules</h2>
+            <dl>
+              @if (rule.regionCode) {
+                <div><dt>Region</dt><dd>{{ rule.regionCode }}</dd></div>
+              }
+              @if (rule.minimumAge) {
+                <div><dt>Minimum age</dt><dd>{{ rule.minimumAge }} years</dd></div>
+              }
+              @if (rule.saleWindow) {
+                <div>
+                  <dt>Sale hours</dt>
+                  <dd>{{ rule.saleWindow.start }} – {{ rule.saleWindow.end }}</dd>
+                </div>
+              }
+            </dl>
+          </div>
+        }
+
+        @if (cart(); as c) {
+          <div class="bb-card bb-summary-box">
+            <h2>Order summary</h2>
+
+            @if (c.vendor) { <p class="bb-store-line">From {{ c.vendor.businessName }}</p> }
+
+            <ul class="bb-lines">
+              @for (item of c.items; track item.id) {
+                <li>
+                  <span>{{ item.quantity }} × {{ item.productName }}</span>
+                  <span class="bb-money">{{ item.lineTotal | money }}</span>
+                </li>
+              }
+            </ul>
+
+            <p-divider />
+
+            <dl>
+              <div><dt>Subtotal</dt><dd class="bb-money">{{ c.subtotal | money }}</dd></div>
+              @if (c.discountTotal > 0) {
+                <div class="is-saving">
+                  <dt>Discount@if (c.coupon) { ({{ c.coupon.code }})}</dt>
+                  <dd class="bb-money">−{{ c.discountTotal | money }}</dd>
+                </div>
+              }
+              <div><dt>Tax</dt><dd class="bb-money">{{ c.taxTotal | money }}</dd></div>
+              <div>
+                <dt>Delivery</dt>
+                <dd class="bb-money">
+                  @if (c.deliveryFee === 0) { Free } @else { {{ c.deliveryFee | money }} }
+                </dd>
+              </div>
+            </dl>
+
+            <p-divider />
+
+            <div class="bb-total">
+              <span>Total</span>
+              <strong class="bb-money">{{ c.grandTotal | money }}</strong>
+            </div>
+
+            <p-button
+              [label]="paymentMethod === 'CASH' ? 'Place order' : 'Place order and pay'"
+              icon="pi pi-check"
+              styleClass="w-full mt-3"
+              [disabled]="!ready() || validating()"
+              [loading]="placing()"
+              (onClick)="placeOrder()"
+            />
+
+            @if (validating()) {
+              <p class="bb-checking">Re-checking availability and rules…</p>
+            }
+
+            <p class="bb-legal">
+              By placing this order you confirm you are of legal drinking age in
+              {{ selectedAddress()?.state || 'your delivery region' }} and will produce a valid
+              government photo ID at handover. The order will be returned if you cannot.
+            </p>
+          </div>
+        } @else {
+          <div class="bb-card">
+            <bb-state-block
+              [empty]="true"
+              emptyIcon="pi-shopping-cart"
+              emptyTitle="Your cart is empty"
+              emptyText="Add something before checking out."
+            >
+              <a routerLink="/shop"><p-button label="Go to the shop" /></a>
+            </bb-state-block>
+          </div>
+        }
+      </aside>
+    </div>
+  }
+</div>
+
+<p-dialog
+  header="Add a delivery address"
+  [visible]="addressDialog()"
+  (visibleChange)="addressDialog.set($event)"
+  [modal]="true"
+  [style]="{ width: '32rem', maxWidth: '95vw' }"
+  [draggable]="false"
+>
+  <form [formGroup]="addressForm" (ngSubmit)="saveAddress()" novalidate class="bb-address-form">
+    <label class="bb-field">
+      <span>Label</span>
+      <input pInputText formControlName="label" placeholder="Home, Office…" />
+    </label>
+
+    <div class="bb-grid-2">
+      <label class="bb-field">
+        <span>Recipient name</span>
+        <input pInputText formControlName="recipientName" />
+        @if (invalid('recipientName')) { <small class="bb-error">Who should we hand it to?</small> }
+      </label>
+
+      <label class="bb-field">
+        <span>Phone</span>
+        <input pInputText formControlName="phone" placeholder="+919876543210" />
+        @if (invalid('phone')) { <small class="bb-error">Include the country code.</small> }
+      </label>
+    </div>
+
+    <label class="bb-field">
+      <span>Address line 1</span>
+      <input pInputText formControlName="addressLine1" />
+      @if (invalid('addressLine1')) { <small class="bb-error">Enter the street address.</small> }
+    </label>
+
+    <label class="bb-field">
+      <span>Address line 2 <em>(optional)</em></span>
+      <input pInputText formControlName="addressLine2" />
+    </label>
+
+    <div class="bb-grid-3">
+      <label class="bb-field">
+        <span>City</span>
+        <input pInputText formControlName="city" />
+        @if (invalid('city')) { <small class="bb-error">Required.</small> }
+      </label>
+
+      <label class="bb-field">
+        <span>State</span>
+        <input pInputText formControlName="state" />
+        @if (invalid('state')) { <small class="bb-error">Required.</small> }
+      </label>
+
+      <label class="bb-field">
+        <span>PIN code</span>
+        <input pInputText formControlName="postalCode" inputmode="numeric" maxlength="6" />
+        @if (invalid('postalCode')) { <small class="bb-error">Six digits.</small> }
+      </label>
+    </div>
+
+    <label class="bb-field">
+      <span>Delivery instructions <em>(optional)</em></span>
+      <input pInputText formControlName="deliveryInstructions" />
+    </label>
+
+    <div class="bb-dialog-actions">
+      <p-button
+        label="Cancel"
+        severity="secondary"
+        [text]="true"
+        type="button"
+        (onClick)="addressDialog.set(false)"
+      />
+      <p-button label="Save address" icon="pi pi-check" type="submit" [loading]="savingAddress()" />
+    </div>
+  </form>
+</p-dialog>

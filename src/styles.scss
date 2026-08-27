@@ -1,0 +1,104 @@
+/* Layer order must match `cssLayer` in app.config.ts, or PrimeNG's component
+   styles win over ours and every override needs !important. */
+@layer theme, base, primeng, app;
+
+:root {
+  --bb-honey: #d97706;
+  --bb-honey-soft: #fef3c7;
+  --bb-ink: #1c1917;
+  --bb-muted: #78716c;
+  --bb-page: #faf9f7;
+  --bb-line: #e7e5e4;
+  --bb-radius: 12px;
+  --bb-shadow: 0 1px 2px rgb(28 25 23 / 6%), 0 4px 16px rgb(28 25 23 / 5%);
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--bb-page);
+  color: var(--bb-ink);
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer app {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .bb-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 4rem;
+  }
+
+  .bb-page-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem;
+  }
+
+  .bb-page-subtitle {
+    color: var(--bb-muted);
+    margin: 0 0 1.5rem;
+    font-size: 0.9rem;
+  }
+
+  .bb-card {
+    background: #fff;
+    border: 1px solid var(--bb-line);
+    border-radius: var(--bb-radius);
+    box-shadow: var(--bb-shadow);
+  }
+
+  /* Loading, empty and error states share one shape so every screen tells the
+     same kind of story when it has nothing to show. */
+  .bb-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 3.5rem 1rem;
+    text-align: center;
+    color: var(--bb-muted);
+  }
+
+  .bb-state i {
+    font-size: 2rem;
+    opacity: 0.45;
+  }
+
+  .bb-state h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--bb-ink);
+  }
+
+  .bb-state p {
+    margin: 0;
+    max-width: 32rem;
+    font-size: 0.9rem;
+  }
+
+  .bb-money {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .bb-strike {
+    text-decoration: line-through;
+    color: var(--bb-muted);
+    font-size: 0.85em;
+  }
+
+  /* A legal notice, not decoration — it stays legible on every screen. */
+  .bb-legal {
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--bb-muted);
+  }
+}

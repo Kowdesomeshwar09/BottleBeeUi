@@ -1,0 +1,111 @@
+<header class="bb-header">
+  <div class="bb-header-inner">
+    <button type="button" class="bb-burger" (click)="drawerOpen.set(true)" aria-label="Open menu">
+      <i class="pi pi-bars"></i>
+    </button>
+
+    <a class="bb-brand" routerLink="/shop">
+      <span class="bb-brand-mark" aria-hidden="true">🐝</span>
+      <span class="bb-brand-text">
+        <strong>Bottle Bee</strong>
+        <small>Cheers Delivered Fast.</small>
+      </span>
+    </a>
+
+    <nav class="bb-nav" aria-label="Main">
+      @for (link of links(); track link.route) {
+        <a
+          [routerLink]="link.route"
+          routerLinkActive="is-active"
+          [routerLinkActiveOptions]="{ exact: false }"
+          class="bb-nav-link"
+        >
+          <i class="pi" [class]="link.icon"></i>
+          <span>{{ link.label }}</span>
+        </a>
+      }
+    </nav>
+
+    <div class="bb-header-actions">
+      @if (isCustomer()) {
+        <a
+          routerLink="/cart"
+          class="bb-icon-btn"
+          pTooltip="Your cart"
+          tooltipPosition="bottom"
+          aria-label="Your cart"
+        >
+          <i class="pi pi-shopping-cart"></i>
+          @if (cartCount() > 0) {
+            <span class="bb-cart-count">{{ cartCount() }}</span>
+          }
+        </a>
+      }
+
+      @if (user(); as u) {
+        <button
+          type="button"
+          class="bb-account"
+          (click)="accountPanel.toggle($event)"
+          aria-haspopup="true"
+          aria-label="Account menu"
+        >
+          <p-avatar [label]="initials()" shape="circle" size="normal" styleClass="bb-avatar" />
+          <span class="bb-account-name">{{ u.firstName }}</span>
+          <i class="pi pi-angle-down"></i>
+        </button>
+        <p-menu #accountPanel [model]="accountMenu()" [popup]="true" appendTo="body" />
+      } @else {
+        <a routerLink="/login" class="bb-signin">Sign in</a>
+      }
+    </div>
+  </div>
+</header>
+
+<p-drawer
+  [visible]="drawerOpen()"
+  (visibleChange)="drawerOpen.set($event)"
+  header="Bottle Bee"
+  position="left"
+  styleClass="bb-drawer"
+>
+  <nav aria-label="Mobile">
+    @for (link of links(); track link.route) {
+      <button type="button" class="bb-drawer-link" (click)="go(link.route)">
+        <i class="pi" [class]="link.icon"></i>
+        <span>{{ link.label }}</span>
+      </button>
+    }
+    @if (user()) {
+      <button type="button" class="bb-drawer-link" (click)="go('/account')">
+        <i class="pi pi-user"></i><span>Your account</span>
+      </button>
+      <button type="button" class="bb-drawer-link" (click)="signOut()">
+        <i class="pi pi-sign-out"></i><span>Sign out</span>
+      </button>
+    } @else {
+      <button type="button" class="bb-drawer-link" (click)="go('/login')">
+        <i class="pi pi-sign-in"></i><span>Sign in</span>
+      </button>
+    }
+  </nav>
+</p-drawer>
+
+<main class="bb-main">
+  <router-outlet />
+</main>
+
+<footer class="bb-footer">
+  <div class="bb-footer-inner">
+    <p class="bb-legal">
+      Bottle Bee is a technology platform. Alcohol is sold by licensed retailers listed on the
+      platform; Bottle Bee neither owns nor sells liquor. Sale to persons below the legal drinking
+      age of the delivery region is prohibited, and a valid government photo ID is required at
+      handover. Consumption of alcohol is injurious to health.
+    </p>
+    <p class="bb-footer-meta">
+      © {{ year }} Bottle Bee
+      @if (supportEmail) { · <a [href]="'mailto:' + supportEmail">{{ supportEmail }}</a> }
+    </p>
+  </div>
+</footer>

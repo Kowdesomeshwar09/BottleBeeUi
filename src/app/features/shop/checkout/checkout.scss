@@ -1,0 +1,303 @@
+.bb-checkout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22rem;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.bb-checkout-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.bb-step {
+  padding: 1.1rem;
+  background: #fff;
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.9rem;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    flex: 1;
+
+    em {
+      font-style: normal;
+      font-weight: 400;
+      color: var(--bb-muted);
+      font-size: 0.85rem;
+    }
+  }
+
+  textarea {
+    width: 100%;
+    resize: vertical;
+  }
+}
+
+.bb-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--bb-honey-soft);
+  color: #92400e;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.bb-step-empty {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--bb-muted);
+}
+
+.bb-address-list {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.bb-address,
+.bb-method {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--bb-line);
+  border-radius: 10px;
+  cursor: pointer;
+
+  &.is-active {
+    border-color: var(--bb-honey);
+    background: #fffdf7;
+  }
+
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  span {
+    font-size: 0.82rem;
+    color: var(--bb-muted);
+  }
+
+  strong em {
+    margin-left: 0.4rem;
+    font-style: normal;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #92400e;
+    background: var(--bb-honey-soft);
+    padding: 0.05rem 0.35rem;
+    border-radius: 999px;
+  }
+}
+
+.bb-methods {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.bb-method {
+  align-items: center;
+
+  i {
+    font-size: 1.2rem;
+    color: var(--bb-honey);
+  }
+}
+
+.bb-checkout-side {
+  position: sticky;
+  top: 5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.bb-blockers,
+.bb-compliance,
+.bb-summary-box {
+  padding: 1.1rem;
+  background: #fff;
+
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0 0 0.7rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+}
+
+.bb-blockers {
+  border-color: #fca5a5;
+
+  h2 i {
+    color: #dc2626;
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 1.1rem;
+  }
+
+  li {
+    font-size: 0.85rem;
+    color: #7f1d1d;
+    margin-bottom: 0.3rem;
+  }
+}
+
+.bb-compliance h2 i {
+  color: #15803d;
+}
+
+.bb-store-line {
+  margin: -0.3rem 0 0.75rem;
+  font-size: 0.8rem;
+  color: var(--bb-muted);
+}
+
+.bb-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.84rem;
+    padding: 0.2rem 0;
+
+    span:first-child {
+      color: #44403c;
+    }
+  }
+}
+
+dl {
+  margin: 0;
+
+  > div {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.25rem 0;
+    font-size: 0.87rem;
+
+    &.is-saving dd {
+      color: #15803d;
+      font-weight: 600;
+    }
+  }
+
+  dt {
+    color: var(--bb-muted);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.bb-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+
+  strong {
+    font-size: 1.3rem;
+  }
+}
+
+.bb-checking {
+  margin: 0.5rem 0 0;
+  font-size: 0.76rem;
+  color: var(--bb-muted);
+  text-align: center;
+}
+
+/* ------------------------------- dialog -------------------------------- */
+
+.bb-address-form {
+  display: block;
+}
+
+.bb-field {
+  display: block;
+  margin-bottom: 0.85rem;
+
+  > span {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+  }
+
+  em {
+    font-style: normal;
+    font-weight: 400;
+    color: var(--bb-muted);
+  }
+
+  input[pInputText] {
+    width: 100%;
+  }
+}
+
+.bb-error {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #dc2626;
+}
+
+.bb-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 0.75rem;
+}
+
+.bb-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0 0.75rem;
+}
+
+.bb-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 900px) {
+  .bb-checkout {
+    grid-template-columns: 1fr;
+  }
+
+  .bb-checkout-side {
+    position: static;
+  }
+}
+
+@media (max-width: 560px) {
+  .bb-grid-2,
+  .bb-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}

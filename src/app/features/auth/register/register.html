@@ -1,0 +1,129 @@
+<div class="bb-auth">
+  <div class="bb-auth-card bb-card" style="max-width: 32rem">
+    <div class="bb-auth-brand">
+      <span aria-hidden="true">🐝</span>
+      <div>
+        <strong>Bottle Bee</strong>
+        <small>Cheers Delivered Fast.</small>
+      </div>
+    </div>
+
+    <h1>Create an account</h1>
+    <p class="bb-auth-lead">It takes a minute. You can verify your ID later, before your first order.</p>
+
+    @if (error(); as message) {
+      <p-message severity="error" [text]="message" styleClass="w-full mb-3" />
+    }
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="bb-field">
+        <span>I am joining as</span>
+        <p-selectbutton
+          formControlName="accountType"
+          [options]="accountTypes"
+          optionLabel="label"
+          optionValue="value"
+          [allowEmpty]="false"
+          styleClass="w-full"
+        />
+      </div>
+
+      <div class="bb-grid-2">
+        <label class="bb-field">
+          <span>First name</span>
+          <input pInputText formControlName="firstName" autocomplete="given-name" />
+          @if (invalid('firstName')) { <small class="bb-error">Tell us your first name.</small> }
+        </label>
+
+        <label class="bb-field">
+          <span>Last name <em>(optional)</em></span>
+          <input pInputText formControlName="lastName" autocomplete="family-name" />
+        </label>
+      </div>
+
+      <label class="bb-field">
+        <span>Email</span>
+        <input pInputText type="email" formControlName="email" autocomplete="email" />
+        @if (invalid('email')) { <small class="bb-error">Enter a valid email address.</small> }
+      </label>
+
+      <label class="bb-field">
+        <span>Mobile number</span>
+        <input pInputText formControlName="phone" autocomplete="tel" placeholder="+919876543210" />
+        @if (invalid('phone')) {
+          <small class="bb-error">Enter a mobile number with country code, e.g. +919876543210.</small>
+        }
+      </label>
+
+      @if (isCustomer()) {
+        <div class="bb-field">
+          <span>Date of birth</span>
+          <p-datepicker
+            formControlName="dateOfBirth"
+            dateFormat="dd M yy"
+            [maxDate]="maxDob"
+            [minDate]="minDob"
+            [showIcon]="true"
+            [defaultDate]="maxDob"
+            styleClass="w-full"
+            inputStyleClass="w-full"
+            placeholder="Select your date of birth"
+          />
+          @if (invalid('dateOfBirth')) {
+            <small class="bb-error">
+              We need your date of birth. You must be of legal drinking age in your delivery region.
+            </small>
+          }
+        </div>
+      }
+
+      <div class="bb-grid-2">
+        <div class="bb-field">
+          <span>Password</span>
+          <p-password
+            formControlName="password"
+            [toggleMask]="true"
+            styleClass="w-full"
+            inputStyleClass="w-full"
+            autocomplete="new-password"
+          />
+          @if (invalid('password')) {
+            <small class="bb-error">
+              At least 8 characters, with an uppercase letter, a lowercase letter, a number and a
+              symbol.
+            </small>
+          }
+        </div>
+
+        <div class="bb-field">
+          <span>Confirm password</span>
+          <p-password
+            formControlName="confirmPassword"
+            [feedback]="false"
+            [toggleMask]="true"
+            styleClass="w-full"
+            inputStyleClass="w-full"
+            autocomplete="new-password"
+          />
+          @if (mismatch) { <small class="bb-error">Passwords do not match.</small> }
+        </div>
+      </div>
+
+      <p-button
+        type="submit"
+        label="Create account"
+        icon="pi pi-user-plus"
+        styleClass="w-full"
+        [loading]="submitting()"
+      />
+    </form>
+
+    <p class="bb-auth-alt">Already registered? <a routerLink="/login">Sign in</a></p>
+
+    <p class="bb-legal">
+      Bottle Bee is a technology platform; alcohol is sold by licensed retailers. Orders are refused
+      to anyone below the legal drinking age of the delivery region, and a valid government photo ID
+      is checked at handover.
+    </p>
+  </div>
+</div>

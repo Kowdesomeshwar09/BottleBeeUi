@@ -1,0 +1,110 @@
+.bb-auth {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background:
+    radial-gradient(1200px 400px at 50% -10%, var(--bb-honey-soft), transparent),
+    var(--bb-page);
+}
+
+.bb-auth-card {
+  width: 100%;
+  max-width: 26rem;
+  padding: 2rem;
+  background: #fff;
+}
+
+.bb-auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.75rem;
+
+  span {
+    font-size: 1.8rem;
+    line-height: 1;
+  }
+
+  div {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+  }
+
+  strong {
+    font-size: 1.05rem;
+  }
+
+  small {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--bb-honey);
+  }
+}
+
+h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.bb-auth-lead {
+  margin: 0 0 1.5rem;
+  color: var(--bb-muted);
+  font-size: 0.9rem;
+}
+
+.bb-field {
+  display: block;
+  margin-bottom: 1.1rem;
+
+  > span {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+  }
+
+  input[pInputText] {
+    width: 100%;
+  }
+}
+
+.bb-error {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--p-red-600, #dc2626);
+}
+
+.bb-auth-alt {
+  margin: 1.25rem 0 1rem;
+  font-size: 0.88rem;
+  text-align: center;
+  color: var(--bb-muted);
+
+  a {
+    color: var(--bb-honey);
+    font-weight: 600;
+  }
+}
+
+.bb-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 0.85rem;
+}
+
+.bb-field em {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--bb-muted);
+}
+
+@media (max-width: 560px) {
+  .bb-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}

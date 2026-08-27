@@ -1,0 +1,10 @@
+{
+  "apiEndPoint": "http://localhost:5000/api/v1/",
+  "appName": "Bottle Bee",
+  "productVersion": "1.0.0",
+  "paymentPublicKey": "",
+  "currencySymbol": "\u20b9",
+  "idleTimeoutMinutes": 30,
+  "supportEmail": "support@bottlebee.in",
+  "supportPhone": "+91 80 4718 0000"
+}

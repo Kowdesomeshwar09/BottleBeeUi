@@ -1,0 +1,72 @@
+# See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+
+# Compiled output
+/dist
+/tmp
+/out-tsc
+/bazel-out
+
+# Node
+/node_modules
+npm-debug.log
+yarn-error.log
+
+# IDEs and editors
+.idea/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/*
+
+# Miscellaneous
+/.angular/cache
+.sass-cache/
+/connect.lock
+/coverage
+/libpeerconnection.log
+testem.log
+/typings
+__screenshots__/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# ---------------------------------------------------------------------------
+# Bottle Bee additions
+# ---------------------------------------------------------------------------
+
+# Environment: never commit real credentials.
+.env
+.env.*
+!.env.example
+
+# Angular build cache in full, not just its cache subfolder
+/.angular
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# End-to-end test output
+/playwright-report
+/test-results
+/blob-report
+/.playwright
+
+# OS
+desktop.ini
+
+# Note: public/assets/config/config.json IS tracked on purpose. It holds the
+# API origin and a publishable payment key only — no secrets — and a fresh
+# clone has to run against a local API without hand-writing a file first.
+# Override it per environment at deploy time, not in the bundle.

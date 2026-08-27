@@ -1,0 +1,68 @@
+<div class="bb-auth">
+  <div class="bb-auth-card bb-card">
+    <div class="bb-auth-brand">
+      <span aria-hidden="true">🐝</span>
+      <div>
+        <strong>Bottle Bee</strong>
+        <small>Cheers Delivered Fast.</small>
+      </div>
+    </div>
+
+    <h1>Sign in</h1>
+    <p class="bb-auth-lead">Welcome back. Use the email you registered with.</p>
+
+    @if (error(); as message) {
+      <p-message severity="error" [text]="message" styleClass="w-full mb-3" />
+    }
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <label class="bb-field">
+        <span>Email</span>
+        <input
+          pInputText
+          type="email"
+          formControlName="email"
+          autocomplete="username"
+          placeholder="you@example.com"
+          [class.ng-invalid]="invalid('email')"
+        />
+        @if (invalid('email')) {
+          <small class="bb-error">Enter a valid email address.</small>
+        }
+      </label>
+
+      <label class="bb-field">
+        <span>Password</span>
+        <p-password
+          formControlName="password"
+          [feedback]="false"
+          [toggleMask]="true"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+          autocomplete="current-password"
+          placeholder="Your password"
+        />
+        @if (invalid('password')) {
+          <small class="bb-error">Enter your password.</small>
+        }
+      </label>
+
+      <p-button
+        type="submit"
+        label="Sign in"
+        icon="pi pi-sign-in"
+        styleClass="w-full"
+        [loading]="submitting()"
+      />
+    </form>
+
+    <p class="bb-auth-alt">
+      New to Bottle Bee? <a routerLink="/register">Create an account</a>
+    </p>
+
+    <p class="bb-legal">
+      You must be of legal drinking age in your delivery region to order. A valid government photo
+      ID is required at handover.
+    </p>
+  </div>
+</div>

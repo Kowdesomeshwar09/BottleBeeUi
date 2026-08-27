@@ -1,0 +1,277 @@
+.bb-cart {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 21rem;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.bb-link-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--bb-honey);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.bb-store-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.85rem;
+  background: #fff;
+
+  i {
+    color: var(--bb-honey);
+    font-size: 1.15rem;
+  }
+
+  div {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  span {
+    font-size: 0.75rem;
+    color: var(--bb-muted);
+  }
+}
+
+.bb-cart-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.6rem;
+  background: #fff;
+
+  &.is-blocked {
+    opacity: 0.7;
+    border-color: #fca5a5;
+  }
+}
+
+.bb-cart-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  align-items: flex-start;
+}
+
+.bb-cart-variant {
+  font-size: 0.8rem;
+  color: var(--bb-muted);
+}
+
+.bb-cart-qty {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--bb-line);
+  border-radius: 8px;
+  overflow: hidden;
+
+  button {
+    width: 2rem;
+    height: 2rem;
+    background: #fff;
+    border: 0;
+    cursor: pointer;
+    color: var(--bb-ink);
+
+    &:hover:not(:disabled) {
+      background: var(--bb-honey-soft);
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+
+  span {
+    min-width: 2rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+}
+
+.bb-cart-line {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+
+  strong {
+    font-size: 1rem;
+  }
+}
+
+.bb-saved {
+  font-size: 0.72rem;
+  color: #15803d;
+  font-weight: 600;
+}
+
+.bb-cart-summary {
+  position: sticky;
+  top: 5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.bb-summary-box,
+.bb-coupon-box {
+  padding: 1.1rem;
+  background: #fff;
+
+  h2 {
+    margin: 0 0 0.85rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+}
+
+dl {
+  margin: 0;
+
+  > div {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.28rem 0;
+    font-size: 0.88rem;
+
+    &.is-saving dd {
+      color: #15803d;
+      font-weight: 600;
+    }
+  }
+
+  dt {
+    color: var(--bb-muted);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.bb-free-hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  color: #15803d;
+}
+
+.bb-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.95rem;
+
+  strong {
+    font-size: 1.3rem;
+  }
+}
+
+.bb-blocked-note {
+  margin: 0.6rem 0 0;
+  font-size: 0.78rem;
+  color: #b91c1c;
+  text-align: center;
+}
+
+.bb-coupon-entry {
+  display: flex;
+  gap: 0.4rem;
+
+  input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.bb-applied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px dashed var(--bb-honey);
+  border-radius: 8px;
+  background: var(--bb-honey-soft);
+
+  div {
+    display: flex;
+    flex-direction: column;
+  }
+
+  span {
+    font-size: 0.75rem;
+    color: #78350f;
+  }
+}
+
+.bb-offer-list {
+  list-style: none;
+  margin: 0.85rem 0 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.55rem 0;
+    border-top: 1px solid var(--bb-line);
+
+    div {
+      display: flex;
+      flex-direction: column;
+    }
+
+    strong {
+      font-size: 0.85rem;
+    }
+
+    span,
+    em {
+      font-size: 0.74rem;
+      color: var(--bb-muted);
+      font-style: normal;
+    }
+
+    &.is-locked {
+      opacity: 0.6;
+    }
+  }
+}
+
+@media (max-width: 900px) {
+  .bb-cart {
+    grid-template-columns: 1fr;
+  }
+
+  .bb-cart-summary {
+    position: static;
+  }
+
+  .bb-cart-row {
+    grid-template-columns: 1fr auto;
+    row-gap: 0.6rem;
+  }
+
+  .bb-cart-info {
+    grid-column: 1 / -1;
+  }
+}
