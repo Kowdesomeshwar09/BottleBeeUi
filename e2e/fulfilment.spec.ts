@@ -1,181 +1,178 @@
-import { expect, test } from '@playwright/test';
+import { Browser, Page, expect, test } from '@playwright/test';
 
-import { Api, firstBuyableVariant } from './support/api';
+import { Api, seedBuyableCart } from './support/api';
 import { STATE } from './support/accounts';
 
 /**
- * One order, carried from a store shelf to a doorstep by the people who
- * actually do it.
+ * One order, carried from a store shelf to a doorstep by the people who do it.
  *
- * Each role's screen is asserted at the point the order becomes that role's
- * problem, which is why the tests are grouped by role — each group runs with
- * that role's saved session. The hand-offs between roles are arranged through
- * the API, so a failure in one role's UI cannot cascade into the next.
+ * WHY THIS IS ONE TEST AND NOT SIX
  *
- * These tests share one order and must run in order. The config pins a single
- * worker with parallelism off for exactly this reason.
+ * The obvious shape is a describe per role, each with `test.use({ storageState })`
+ * and the order created in a shared `beforeAll`. That does not work: changing
+ * `storageState` starts a new Playwright worker, and `beforeAll` runs once per
+ * worker — so every role group quietly checked out its *own* order, and the
+ * rider then looked for an assignment against an order dispatch had never seen.
+ *
+ * A cross-role journey is inherently one sequence over one order, so it is
+ * written as one: each role gets its own browser context explicitly, and the
+ * steps run in the order the real workflow does. The `step` calls keep the
+ * report readable, and a failure names the stage it happened in.
  */
 test.describe('fulfilment, end to end', () => {
-  let customerApi: Api;
-  let vendorApi: Api;
-  let riderApi: Api;
-  let orderId: number;
-  let orderNumber: string;
+  test.describe.configure({ timeout: 180_000 });
 
-  test.beforeAll(async () => {
-    customerApi = await Api.as('customer');
-    vendorApi = await Api.as('vendor');
-    riderApi = await Api.as('rider');
+  /** A page authenticated as one role. */
+  const pageAs = async (browser: Browser, state: string): Promise<Page> => {
+    const context = await browser.newContext({ storageState: state });
+    return context.newPage();
+  };
 
-    await customerApi.post('cart/clear');
-    const { variantId } = await firstBuyableVariant();
-    await customerApi.post('cart/add-item', { productVariantId: variantId, quantity: 1 });
+  test('an order travels from checkout to a verified handover', async ({ browser }) => {
+    const customerApi = await Api.as('customer');
+    const vendorApi = await Api.as('vendor');
+    const riderApi = await Api.as('rider');
 
-    const order = await customerApi.post<any>('orders/checkout', {
-      paymentMethod: 'CASH',
-      customerNotes: 'E2E fulfilment run',
-    });
+    let orderId = 0;
+    let orderNumber = '';
+    let assignmentId = 0;
 
-    orderId = order.data.id;
-    orderNumber = order.data.orderNumber;
-  });
+    try {
+      await test.step('the customer places an order the store will accept', async () => {
+        // Enough to clear the store's minimum order value; see seedBuyableCart.
+        await seedBuyableCart(customerApi);
 
-  test.afterAll(async () => {
-    await Promise.all([customerApi.dispose(), vendorApi.dispose(), riderApi.dispose()]);
-  });
+        const order = await customerApi.post<any>('orders/checkout', {
+          paymentMethod: 'CASH',
+          customerNotes: 'E2E fulfilment run',
+        });
 
-  /* ------------------------------- the store ------------------------------ */
+        orderId = order.data.id;
+        orderNumber = order.data.orderNumber;
+        expect(orderNumber).toMatch(/^BB-/);
+      });
 
-  test.describe('the store', () => {
-    test.use({ storageState: STATE.vendor });
+      await test.step('the store sees it and starts packing', async () => {
+        const page = await pageAs(browser, STATE.vendor);
 
-    test('sees the new order in its queue', async ({ page }) => {
-      await page.goto('/vendor/orders');
+        await page.goto('/vendor/orders');
+        const row = page.getByRole('row').filter({ hasText: orderNumber });
+        await expect(row).toBeVisible({ timeout: 20_000 });
+        await expect(page.locator('.bb-stats')).toContainText('Orders');
 
-      await expect(page.getByRole('cell', { name: orderNumber })).toBeVisible({ timeout: 20_000 });
-      await expect(page.locator('.bb-stats')).toContainText('Orders');
-    });
+        await row.getByRole('button', { name: 'Start packing' }).click();
+        await expect(page.getByText(/Preparing/).first()).toBeVisible({ timeout: 15_000 });
 
-    test('can move it to packing', async ({ page }) => {
-      await page.goto('/vendor/orders');
+        await page.context().close();
+      });
 
-      const row = page.getByRole('row').filter({ hasText: orderNumber });
-      await expect(row).toBeVisible({ timeout: 20_000 });
-      await row.getByRole('button', { name: 'Start packing' }).click();
+      await test.step('dispatch assigns a rider to the packed order', async () => {
+        // Arrange the hand-off rather than re-driving the vendor UI for it.
+        await vendorApi.post('orders/update-status', { id: orderId, status: 'READY_FOR_PICKUP' });
 
-      await expect(page.getByText(/Preparing/).first()).toBeVisible({ timeout: 15_000 });
-    });
-  });
+        const page = await pageAs(browser, STATE.admin);
 
-  /* -------------------------------- dispatch ------------------------------ */
+        await page.goto('/admin/orders');
+        const row = page.getByRole('row').filter({ hasText: orderNumber });
+        await expect(row).toBeVisible({ timeout: 20_000 });
 
-  test.describe('dispatch', () => {
-    test.use({ storageState: STATE.admin });
+        await row.getByRole('button', { name: 'Assign rider' }).click();
 
-    test('sees the packed order and can assign a rider', async ({ page }) => {
-      // Arrange the hand-off rather than re-driving the vendor UI.
-      await vendorApi.post('orders/update-status', { id: orderId, status: 'READY_FOR_PICKUP' });
+        // Everything after this is scoped to the dialog: the table behind it
+        // has its own Assign buttons, and the dialog's own title would match a
+        // bare "Delivery partner" label lookup.
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
 
-      await page.goto('/admin/orders');
+        await dialog.getByRole('combobox', { name: 'Delivery partner' }).click();
+        const option = page.getByRole('option').first();
+        await expect(option).toBeVisible({ timeout: 15_000 });
+        await option.click();
 
-      const row = page.getByRole('row').filter({ hasText: orderNumber });
-      await expect(row).toBeVisible({ timeout: 20_000 });
+        // Not `exact`: PrimeNG's computed accessible name for a button with an
+        // icon is not the bare label, so an exact match finds nothing. Scoping
+        // to the dialog is what disambiguates it from the table's own buttons.
+        await dialog.getByRole('button', { name: 'Assign' }).click();
+        await expect(page.locator('.p-toast')).toContainText('Rider assigned', {
+          timeout: 20_000,
+        });
 
-      await row.getByRole('button', { name: 'Assign rider' }).click();
-      await expect(page.getByText('Assign a delivery partner')).toBeVisible();
+        await page.context().close();
+      });
 
-      // Only active partners are offered.
-      await page.getByLabel('Delivery partner').click();
-      const option = page.getByRole('option').first();
-      await expect(option).toBeVisible();
-      await option.click();
+      await test.step('the rider sees the run, with the address and the ID state', async () => {
+        const runs = await riderApi.post<any>('delivery/list', { limit: 30 });
+        const run = (runs.data as any[]).find((r) => r.order?.orderNumber === orderNumber);
+        expect(run, `no assignment found for ${orderNumber}`).toBeTruthy();
+        assignmentId = run.id;
 
-      await page.getByRole('button', { name: 'Assign', exact: true }).click();
-      await expect(page.getByText('Rider assigned')).toBeVisible({ timeout: 20_000 });
-    });
-  });
+        const page = await pageAs(browser, STATE.rider);
 
-  /* -------------------------------- the rider ----------------------------- */
+        await page.goto('/delivery/my-deliveries');
+        const card = page.locator('.bb-run').filter({ hasText: orderNumber });
+        await expect(card).toBeVisible({ timeout: 20_000 });
+        await expect(card.locator('address')).not.toBeEmpty();
+        await expect(card).toContainText(/ID not checked/);
 
-  test.describe('the rider', () => {
-    test.use({ storageState: STATE.rider });
+        await page.context().close();
+      });
 
-    /** The assignment for this run, looked up rather than assumed. */
-    const findRun = async () => {
-      const runs = await riderApi.post<any>('delivery/list', { limit: 20 });
-      const run = (runs.data as any[]).find((r) => r.order?.orderNumber === orderNumber);
-      expect(run, `no assignment found for ${orderNumber}`).toBeTruthy();
-      return run;
-    };
+      await test.step('the handover is refused until the recipient is checked', async () => {
+        await riderApi.post('delivery/respond', { id: assignmentId, accept: true });
+        await riderApi.post('delivery/advance', { id: assignmentId, status: 'PICKED_UP' });
+        await riderApi.post('delivery/advance', { id: assignmentId, status: 'IN_TRANSIT' });
 
-    test('sees the run and the address', async ({ page }) => {
-      await page.goto('/delivery/my-deliveries');
+        // The server refuses completion outright.
+        const refused = await riderApi.attempt('delivery/complete', { id: assignmentId });
+        expect(refused.status).toBe(403);
 
-      const run = page.locator('.bb-run').filter({ hasText: orderNumber });
-      await expect(run).toBeVisible({ timeout: 20_000 });
-      await expect(run.locator('address')).not.toBeEmpty();
-      await expect(run).toContainText(/ID not checked/);
-    });
+        // And the screen leads with why, rather than offering a button that fails.
+        const page = await pageAs(browser, STATE.rider);
+        await page.goto(`/delivery/my-deliveries/${assignmentId}`);
 
-    test('cannot complete the run before checking the recipient', async ({ page }) => {
-      const run = await findRun();
+        const gate = page.locator('.bb-gate');
+        await expect(gate).toBeVisible({ timeout: 20_000 });
+        await expect(gate).toContainText(/below the legal drinking age/i);
+        await expect(gate).toContainText(/mark this run failed/i);
+        await expect(page.getByRole('button', { name: 'Handed over — complete' })).toHaveCount(0);
 
-      // Get the order to the doorstep.
-      if (run.status === 'ASSIGNED') {
-        await riderApi.post('delivery/respond', { id: run.id, accept: true });
-      }
-      await riderApi.post('delivery/advance', { id: run.id, status: 'PICKED_UP' });
-      await riderApi.post('delivery/advance', { id: run.id, status: 'IN_TRANSIT' });
+        await page.context().close();
+      });
 
-      // The server refuses completion until the recipient has been checked.
-      const refused = await riderApi.attempt('delivery/complete', { id: run.id });
-      expect(refused.status).toBe(403);
+      await test.step('recording the ID check unlocks completion', async () => {
+        const page = await pageAs(browser, STATE.rider);
+        await page.goto(`/delivery/my-deliveries/${assignmentId}`);
 
-      // And the screen leads with that, rather than offering a button that fails.
-      await page.goto(`/delivery/my-deliveries/${run.id}`);
+        await page.getByRole('button', { name: 'I have checked their ID' }).click();
+        await expect(page.getByText('Which document did you check?')).toBeVisible();
+        await page.getByRole('button', { name: 'ID checked and valid' }).click();
+        await expect(page.locator('.p-toast')).toContainText('ID recorded', { timeout: 20_000 });
 
-      const gate = page.locator('.bb-gate');
-      await expect(gate).toBeVisible({ timeout: 20_000 });
-      await expect(gate).toContainText(/below the legal drinking age/i);
-      await expect(gate).toContainText(/mark this run failed/i);
-      await expect(page.getByRole('button', { name: 'Handed over — complete' })).toHaveCount(0);
-    });
+        await page.getByRole('button', { name: 'Handed over — complete' }).click();
+        await expect(page.locator('.p-toast')).toContainText('Delivered', { timeout: 20_000 });
 
-    test('recording the ID check unlocks completion, and delivers it', async ({ page }) => {
-      const run = await findRun();
+        await page.context().close();
+      });
 
-      await page.goto(`/delivery/my-deliveries/${run.id}`);
+      await test.step('the customer sees it delivered, with the ID check recorded', async () => {
+        const page = await pageAs(browser, STATE.customer);
+        await page.goto(`/orders/${orderId}`);
 
-      await page.getByRole('button', { name: 'I have checked their ID' }).click();
-      await expect(page.getByText('Which document did you check?')).toBeVisible();
-      await page.getByRole('button', { name: 'ID checked and valid' }).click();
+        await expect(page.locator('.bb-track-tags')).toContainText('Delivered', { timeout: 20_000 });
+        await expect(page.locator('.bb-track-side').getByText('ID checked')).toBeVisible();
 
-      await expect(page.getByText('ID recorded')).toBeVisible({ timeout: 20_000 });
+        const timeline = page.locator('.bb-track-main');
+        await expect(timeline).toContainText('Confirmed');
+        await expect(timeline).toContainText('Delivered');
 
-      await page.getByRole('button', { name: 'Handed over — complete' }).click();
-      await expect(page.getByText('Delivered').first()).toBeVisible({ timeout: 20_000 });
-    });
-  });
+        // A delivered order can be reviewed.
+        await expect(page.getByRole('button', { name: 'Rate this order' })).toBeVisible();
 
-  /* ------------------------------ the customer ---------------------------- */
-
-  test.describe('the customer', () => {
-    test.use({ storageState: STATE.customer });
-
-    test('sees it delivered, with the ID check recorded', async ({ page }) => {
-      await page.goto(`/orders/${orderId}`);
-
-      await expect(page.locator('.bb-track-tags')).toContainText('Delivered', { timeout: 20_000 });
-      await expect(page.locator('.bb-track-side').getByText('ID checked')).toBeVisible();
-
-      // The whole journey is on the timeline.
-      const timeline = page.locator('.bb-track-main');
-      await expect(timeline).toContainText('Confirmed');
-      await expect(timeline).toContainText('Delivered');
-
-      // And a delivered order can be reviewed.
-      await expect(page.getByRole('button', { name: 'Rate this order' })).toBeVisible();
-    });
+        await page.context().close();
+      });
+    } finally {
+      await Promise.all([customerApi.dispose(), vendorApi.dispose(), riderApi.dispose()]);
+    }
   });
 });
 

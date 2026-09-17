@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Typecheck and build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck the end-to-end suite
+        run: npx tsc -p tsconfig.e2e.json --noEmit
+
+      - name: Build
+        run: npm run build
+
+  e2e:
+    name: End to end
+    runs-on: ubuntu-latest
+    needs: build
+
+    # The suite drives a real browser against a real API and a real database,
+    # which is the point: the failures worth catching live between the three.
+    # Two of the bugs this suite has already found were response shapes the
+    # screens read wrongly — invisible to any test that mocks the API away.
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-root-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ci-root-password
+      DB_NAME_TEST: bottle_bee_test
+
+    steps:
+      - name: Check out the frontend
+        uses: actions/checkout@v4
+
+      - name: Check out the API
+        uses: actions/checkout@v4
+        with:
+          repository: Kowdesomeshwar09/BottleBeeBackend
+          path: api-repo
+          # Needed only once BottleBeeBackend is private, which is recommended.
+          # Create a fine-grained PAT with read access to that repository and
+          # store it as the ACCESS_API_REPO secret.
+          token: ${{ secrets.ACCESS_API_REPO || github.token }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install the frontend
+        run: npm ci
+
+      - name: Install the API
+        working-directory: api-repo/BottleBeeApi
+        run: npm ci
+
+      - name: Prepare the API database
+        working-directory: api-repo/BottleBeeApi
+        env:
+          NODE_ENV: test
+        run: |
+          npx sequelize-cli db:create
+          npx sequelize-cli db:migrate
+          npx sequelize-cli db:seed:all
+
+      - name: Start the API
+        working-directory: api-repo/BottleBeeApi
+        # NODE_ENV=test points it at the seeded test database and disables the
+        # rate limiters. That matters: a browser-driven suite legitimately makes
+        # thousands of requests and would otherwise exhaust the 300-per-15-minute
+        # global cap on itself.
+        env:
+          NODE_ENV: test
+        run: |
+          node server.js > "$RUNNER_TEMP/api.log" 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://localhost:5000/api/v1/health/check > /dev/null; then
+              echo "API is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API did not start:"
+          cat "$RUNNER_TEMP/api.log"
+          exit 1
+
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the suite
+        run: npx playwright test
+
+      - name: API log
+        if: failure()
+        run: cat "$RUNNER_TEMP/api.log" || true
+
+      - name: Upload the report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

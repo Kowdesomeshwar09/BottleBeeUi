@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { Api, seedBuyableCart } from './support/api';
 import { STATE } from './support/accounts';
 
 test.describe('the admin dashboard', () => {
@@ -79,8 +80,11 @@ test.describe('store and licence review', () => {
     await expect(link).toBeVisible({ timeout: 20_000 });
     await link.click();
 
-    await expect(page.getByText('Legal name')).toBeVisible();
-    await expect(page.getByText('Commission')).toBeVisible();
+    // Scoped to the dialog: the table behind it has a Commission column too.
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByText('Legal name')).toBeVisible();
+    await expect(dialog.getByText('Commission')).toBeVisible();
+    await expect(dialog.getByText('Minimum order')).toBeVisible();
   });
 });
 
@@ -141,6 +145,19 @@ test.describe('product approval', () => {
 test.describe('all orders', () => {
   test.use({ storageState: STATE.admin });
 
+  // Places one order first. On a freshly seeded database there are none, and a
+  // test that merely tolerated the empty state would assert nothing about the
+  // columns it exists to check.
+  test.beforeAll(async () => {
+    const customer = await Api.as('customer');
+    try {
+      await seedBuyableCart(customer);
+      await customer.post('orders/checkout', { paymentMethod: 'CASH' });
+    } finally {
+      await customer.dispose();
+    }
+  });
+
   test('shows every store, with the delivery state', async ({ page }) => {
     await page.goto('/admin/orders');
 
@@ -152,5 +169,8 @@ test.describe('all orders', () => {
     await expect(table).toContainText('Store');
     await expect(table).toContainText('Region');
     await expect(table).toContainText('Delivery');
+
+    // And the order really is listed, not just the header.
+    await expect(page.locator('.bb-table tbody tr').first()).toBeVisible();
   });
 });

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { Api, firstBuyableVariant } from './support/api';
+import { Api, firstBuyableVariant, seedBuyableCart } from './support/api';
 import { STATE } from './support/accounts';
 
 /**
@@ -24,10 +24,9 @@ test.describe('checkout', () => {
   });
 
   test.beforeEach(async () => {
-    // Start from a known cart, arranged through the API rather than the UI.
-    await api.post('cart/clear');
-    const { variantId } = await firstBuyableVariant();
-    await api.post('cart/add-item', { productVariantId: variantId, quantity: 1 });
+    // A cart the store would actually accept: the seeded shop has a 500
+    // minimum, so a single 150 bottle is legitimately refused at checkout.
+    await seedBuyableCart(api);
   });
 
   test('shows the regional rules the server applied', async ({ page }) => {
@@ -67,7 +66,8 @@ test.describe('checkout', () => {
     await page.getByRole('button', { name: 'Place order' }).click();
 
     await expect(page).toHaveURL(/\/orders\/\d+/, { timeout: 30_000 });
-    await expect(page.getByText('Order placed')).toBeVisible();
+    // Scoped to the toast: the tracking page also explains the status in prose.
+    await expect(page.locator('.p-toast')).toContainText('Order placed');
 
     // Confirmed straight away, because there is nothing to collect online.
     await expect(page.locator('.bb-track-tags')).toContainText('Confirmed');
@@ -87,36 +87,44 @@ test.describe('checkout', () => {
     await api.post('cart/clear');
 
     await page.goto('/checkout');
-    await expect(page.getByText('Your cart is empty')).toBeVisible({ timeout: 20_000 });
+    // The heading, not loose text: the blocker list says the same thing, which
+    // is itself the point — the screen states it twice over, deliberately.
+    await expect(
+      page.getByRole('heading', { name: 'Your cart is empty' }),
+    ).toBeVisible({ timeout: 20_000 });
+
+    // No order button at all, rather than a disabled one over a summary of
+    // nothing. validate-checkout still returns a cart object when it holds no
+    // items, so the screen keys off the items rather than the cart's presence.
     await expect(page.getByRole('button', { name: /Place order/ })).toHaveCount(0);
+    await expect(page.locator('.bb-summary-box')).toHaveCount(0);
   });
 });
 
 test.describe('the server is the authority on price', () => {
   test.use({ storageState: STATE.customer });
 
-  test('a tampered client total does not change what is charged', async ({ page }) => {
+  test('a tampered client total is ignored, not obeyed', async ({ page }) => {
     const api = await Api.as('customer');
+    const seeded = await seedBuyableCart(api);
 
-    await api.post('cart/clear');
-    const { variantId, price } = await firstBuyableVariant();
-    await api.post('cart/add-item', { productVariantId: variantId, quantity: 1 });
-
-    // Checkout accepts an address, a method and a note. There is no price field
-    // to tamper with — anything else in the body is rejected outright.
-    const attempt = await api.attempt('orders/checkout', {
+    // The validate middleware runs with `stripUnknown`, so a body carrying
+    // price fields does not get rejected — the fields are silently dropped and
+    // never reach the pricing engine. That is the stronger guarantee: mass
+    // assignment is impossible by construction rather than by a blocklist.
+    const order = await api.post<any>('orders/checkout', {
       paymentMethod: 'CASH',
       grandTotal: 1,
       subtotal: 1,
+      discountTotal: 9999,
     });
 
-    expect(attempt.status).toBe(422);
+    // Charged the server's figure, not the one asked for.
+    expect(order.data.grandTotal).toBe(seeded.grandTotal);
+    expect(order.data.subtotal).toBe(seeded.subtotal);
+    expect(order.data.grandTotal).not.toBe(1);
 
-    // And an honest checkout charges the real amount.
-    const honest = await api.post<any>('orders/checkout', { paymentMethod: 'CASH' });
-    expect(honest.data.grandTotal).toBeGreaterThanOrEqual(price);
-
-    await page.goto(`/orders/${honest.data.id}`);
+    await page.goto(`/orders/${order.data.id}`);
     await expect(page.locator('.bb-track-main')).toContainText('Total');
 
     await api.dispose();

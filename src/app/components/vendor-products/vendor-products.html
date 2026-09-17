@@ -162,6 +162,7 @@
           optionValue="id"
           placeholder="Choose a category"
           styleClass="w-full"
+          ariaLabel="Category"
         />
         @if (invalidIn('productForm', 'categoryId')) { <small class="bb-error">Required.</small> }
       </div>
@@ -178,6 +179,7 @@
           filterBy="name"
           [showClear]="true"
           styleClass="w-full"
+          ariaLabel="Brand"
         />
       </div>
     </div>
@@ -191,6 +193,7 @@
           optionLabel="label"
           optionValue="value"
           styleClass="w-full"
+          ariaLabel="Type"
         />
       </div>
 

@@ -74,6 +74,7 @@
                     [showIcon]="true"
                     styleClass="w-full"
                     inputStyleClass="w-full"
+                    ariaLabel="Date of birth"
                   />
                   @if (invalidIn('profileForm', 'dateOfBirth')) {
                     <small class="bb-error">We need your date of birth.</small>
@@ -88,6 +89,7 @@
                     optionLabel="label"
                     optionValue="value"
                     styleClass="w-full"
+                    ariaLabel="Gender"
                   />
                 </div>
               </div>
@@ -243,6 +245,7 @@
                       optionLabel="label"
                       optionValue="value"
                       styleClass="w-full"
+                      ariaLabel="Document type"
                     />
                   </div>
 
@@ -265,6 +268,7 @@
                     [showIcon]="true"
                     styleClass="w-full"
                     inputStyleClass="w-full"
+                    ariaLabel="Date of birth as printed on the document"
                   />
                   @if (invalidIn('kycForm', 'dateOfBirth')) {
                     <small class="bb-error">Required.</small>

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { firstBuyableVariant } from './support/api';
+import { Api, firstBuyableVariant, seedBuyableCart } from './support/api';
 import { ANONYMOUS, STATE } from './support/accounts';
 
 test.describe('the storefront', () => {
@@ -57,7 +57,8 @@ test.describe('the storefront', () => {
     await expect(page.getByRole('heading', { name: productName, level: 1 })).toBeVisible();
     await expect(page.locator('.bb-variant').first()).toBeVisible();
     await expect(page.locator('.bb-price-block strong')).toContainText('₹');
-    await expect(page.locator('.bb-legal')).toContainText(/photo ID/i);
+    // Scoped to the buy panel: the footer carries a .bb-legal notice too.
+    await expect(page.locator('.bb-buy .bb-legal')).toContainText(/photo ID/i);
   });
 
   test('an unknown product slug does not render a broken page', async ({ page }) => {
@@ -95,6 +96,22 @@ test.describe('the age gate on the storefront', () => {
 test.describe('the cart', () => {
   test.use({ storageState: STATE.customer });
 
+  let api: Api;
+
+  test.beforeAll(async () => {
+    api = await Api.as('customer');
+  });
+
+  test.afterAll(async () => {
+    await api.dispose();
+  });
+
+  // One customer is shared by these tests, so each starts from an empty cart.
+  // Otherwise "remove the only item" leaves yesterday's row behind.
+  test.beforeEach(async () => {
+    await api.post('cart/clear');
+  });
+
   test('an item can be added, its quantity changed, and removed', async ({ page }) => {
     const { productSlug } = await firstBuyableVariant();
 
@@ -122,15 +139,6 @@ test.describe('the cart', () => {
   test('the header badge tracks what is in the cart', async ({ page }) => {
     const { productSlug } = await firstBuyableVariant();
 
-    await page.goto('/cart');
-    if (await page.getByText('Your cart is empty').isVisible().catch(() => false)) {
-      // already empty
-    } else {
-      await page.locator('.bb-store-strip').getByRole('button', { name: 'Empty cart' }).click();
-      await page.getByRole('button', { name: 'Empty it' }).click();
-      await expect(page.getByText('Your cart is empty')).toBeVisible();
-    }
-
     await page.goto(`/shop/product/${productSlug}`);
     await page.getByRole('button', { name: 'Add to cart' }).click();
 
@@ -138,29 +146,27 @@ test.describe('the cart', () => {
   });
 
   test('totals are shown itemised, with the tax line', async ({ page }) => {
-    const { productSlug } = await firstBuyableVariant();
-
-    await page.goto(`/shop/product/${productSlug}`);
-    await page.getByRole('button', { name: 'Add to cart' }).click();
+    await seedBuyableCart(api);
 
     await page.goto('/cart');
     const summary = page.locator('.bb-summary-box');
 
-    await expect(summary.getByText('Subtotal')).toBeVisible();
-    await expect(summary.getByText('Tax')).toBeVisible();
-    await expect(summary.getByText('Delivery')).toBeVisible();
+    // Matched on the definition terms: the free-delivery hint also says
+    // "delivery", so a loose text match resolves to two elements.
+    await expect(summary.locator('dt', { hasText: /^Subtotal$/ })).toBeVisible();
+    await expect(summary.locator('dt', { hasText: /^Tax$/ })).toBeVisible();
+    await expect(summary.locator('dt', { hasText: /^Delivery$/ })).toBeVisible();
     await expect(summary.locator('.bb-total strong')).toContainText('₹');
   });
 
   test('an invalid coupon is reported rather than silently ignored', async ({ page }) => {
-    const { productSlug } = await firstBuyableVariant();
-
-    await page.goto(`/shop/product/${productSlug}`);
-    await page.getByRole('button', { name: 'Add to cart' }).click();
+    await seedBuyableCart(api);
 
     await page.goto('/cart');
     await page.getByLabel('Coupon code').fill('NOT-A-REAL-COUPON');
-    await page.getByRole('button', { name: 'Apply' }).click();
+
+    // Scoped to the entry box: every offer in the list has its own Apply.
+    await page.locator('.bb-coupon-entry').getByRole('button', { name: 'Apply' }).click();
 
     await expect(page.getByText('Coupon not applied')).toBeVisible();
   });

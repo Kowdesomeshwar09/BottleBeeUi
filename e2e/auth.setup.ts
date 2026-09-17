@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { expect, request, test as setup } from '@playwright/test';
 
@@ -19,15 +19,57 @@ const APP = process.env['E2E_BASE_URL'] || 'http://localhost:4200';
  * The saved state is the same three localStorage keys the app itself writes, so
  * a test starting from it is indistinguishable from a user who signed in.
  */
+/**
+ * True when a previously saved session still authenticates.
+ *
+ * Access tokens live fifteen minutes, which is also the login rate-limit
+ * window — so a debug loop that re-runs the suite every few minutes would
+ * otherwise spend its entire allowance on setup and lock the account out. One
+ * cheap `auth/me` probe per role, and a re-run inside the token's life costs no
+ * logins at all.
+ */
+async function savedSessionStillValid(account: AccountName): Promise<boolean> {
+  const file = STATE[account];
+  if (!existsSync(file)) return false;
+
+  let token: string | undefined;
+  try {
+    const state = JSON.parse(readFileSync(file, 'utf8'));
+    token = (state?.origins?.[0]?.localStorage ?? [])
+      .find((e: { name: string }) => e.name === 'bb_access_token')?.value;
+  } catch {
+    return false;
+  }
+  if (!token) return false;
+
+  const ctx = await request.newContext({ baseURL: API });
+  try {
+    const res = await ctx.post('auth/me', {
+      data: {},
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.ok();
+  } catch {
+    return false;
+  } finally {
+    await ctx.dispose();
+  }
+}
+
 async function saveSession(account: AccountName) {
+  if (await savedSessionStillValid(account)) return;
+
   const { email, password } = ACCOUNTS[account];
   const ctx = await request.newContext({ baseURL: API });
 
   const res = await ctx.post('auth/login', { data: { email, password } });
   expect(
     res.ok(),
-    `Could not sign in as ${account} (${email}): HTTP ${res.status()} ${await res.text()}. ` +
-      'Is the API running on port 5000 with the seeders applied?',
+    `Could not sign in as ${account} (${email}): HTTP ${res.status()} ${await res.text()}. `
+      + (res.status() === 429
+        ? 'The login rate limit is exhausted. Wait fifteen minutes, or raise '
+          + 'AUTH_RATE_LIMIT_MAX in the API .env for local runs.'
+        : 'Is the API running on port 5000 with the seeders applied?'),
   ).toBeTruthy();
 
   const { data } = await res.json();

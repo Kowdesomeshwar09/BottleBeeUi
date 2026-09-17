@@ -158,7 +158,11 @@
           </div>
         }
 
-        @if (cart(); as c) {
+        <!-- An item-less cart is an empty cart: validate-checkout still returns
+             a cart object, so testing for its presence alone would render a
+             summary of nothing and a Place order button that cannot work. -->
+        @if (cart()?.items?.length) {
+          @let c = cart()!;
           <div class="bb-card bb-summary-box">
             <h2>Order summary</h2>
 
